@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}Full assessment · MindCare{% endblock %}
+{% block heading %}Full assessment{% endblock %}
+{% block subheading %}Three short questionnaires and one reflection —
+  about 5 minutes{% endblock %}
+
+{% block content %}
+<div class="grid g23">
+  <div>
+    {% if unfinished %}
+      <div class="flash flash-warning">
+        You have an unfinished assessment from {{ unfinished.started_at|ago }}.
+        Continuing will pick up exactly where you left off.
+      </div>
+    {% endif %}
+
+    <div class="card">
+      <div class="hd"><h3>What you will be asked</h3></div>
+      <div class="bd">
+        <p class="muted">Each questionnaire below is a standard, published
+          screening tool. Answer honestly — there are no right answers, and a
+          higher score simply means it is worth talking to someone.</p>
+
+        {% for i in instruments %}
+          <div style="padding:13px 0; border-bottom:1px solid var(--border)">
+            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap">
+              <span class="badge b-blue">{{ i.code }}</span>
+              <b>{{ i.full_name }}</b>
+              <span style="flex:1"></span>
+              <span class="tiny faint">{{ i.item_count }} questions</span>
+            </div>
+            <div class="tiny muted" style="margin-top:5px">
+              Measures <b>{{ i.measures|lower }}</b> · asks about
+              <b>{{ i.recall_period|lower }}</b> · scored {{ i.score_min }}–{{ i.score_max }}
+            </div>
+          </div>
+        {% endfor %}
+
+        <div style="padding:13px 0">
+          <div style="display:flex; align-items:center; gap:10px">
+            <span class="badge b-grey">Reflection</span>
+            <b>In your own words</b>
+            <span style="flex:1"></span>
+            <span class="tiny faint">1 short paragraph</span>
+          </div>
+          <div class="tiny muted" style="margin-top:5px">
+            Read by the model and given a Low, Medium or High stress level.
+          </div>
+        </div>
+
+        <form method="post" style="margin-top:16px">
+          <button class="btn btn-primary" type="submit" style="width:100%">
+            {% if unfinished %}Continue where I left off{% else %}Begin assessment
+            ({{ total_items }} questions){% endif %}</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="card">
+      <div class="hd"><h3>Before you start</h3></div>
+      <div class="bd small">
+        <ul style="margin:0; padding-left:18px; line-height:1.85">
+          <li>Find five quiet minutes — rushed answers are less useful to you.</li>
+          <li>Answer for how things have <b>actually</b> been, not how you think
+              they should have been.</li>
+          <li>You can stop and resume; answers are saved as you go.</li>
+          <li>A high score is information, not a verdict.</li>
+        </ul>
+      </div>
+    </div>
+
+    {% if previous %}
+    <div class="card">
+      <div class="hd"><h3>Your last assessment</h3></div>
+      <div class="bd">
+        <dl class="kv">
+          <dt>Taken</dt><dd>{{ previous.completed_at|dt }}</dd>
+          <dt>Composite</dt><dd><b>{{ previous.composite_score }}</b> / 100</dd>
+          <dt>Band</dt>
+          <dd><span class="badge b-{{ (previous.composite_band or 'grey')|lower }}">
+            {{ previous.composite_band }}</span></dd>
+        </dl>
+        <a class="btn btn-sm" style="margin-top:11px"
+           href="{{ url_for('screening.result', screening_id=previous.screening_id) }}">
+          View that report</a>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="card">
+      <div class="hd"><h3>If you need help now</h3></div>
+      <div class="bd small">
+        <p class="muted">Do not wait for a questionnaire if things feel urgent.</p>
+        <dl class="kv">
+          <dt>Tele-MANAS</dt><dd><b>14416</b> · free, 24×7</dd>
+          <dt>iCALL</dt><dd><b>9152987821</b></dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

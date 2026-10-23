@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}Database · MindCare{% endblock %}
+{% block heading %}Database{% endblock %}
+{% block subheading %}{{ tables|length }} tables · {{ views|length }} views ·
+  {{ triggers|length }} triggers · {{ db_size }} MB on disk{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="hd"><h3>Tables</h3></div>
+  <div class="bd tight table-wrap">
+    <table>
+      <thead><tr><th>Table</th><th class="num">Rows</th><th class="num">Columns</th>
+        <th>Primary key</th><th>Foreign keys</th></tr></thead>
+      <tbody>
+      {% for t in tables %}
+        <tr>
+          <td><a href="#tbl-{{ t.name }}"><b>{{ t.name }}</b></a></td>
+          <td class="num">{{ t.rows }}</td>
+          <td class="num">{{ t.columns|length }}</td>
+          <td class="small mono tiny">
+            {{ t.columns | selectattr('pk') | map(attribute='name') | join(', ') or '—' }}</td>
+          <td class="small tiny muted">
+            {% for fk in t.foreign_keys %}
+              {{ fk['from'] }} → {{ fk.table }}.{{ fk.to }}{{ ', ' if not loop.last }}
+            {% else %}—{% endfor %}
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% for t in tables %}
+  <div class="card" id="tbl-{{ t.name }}">
+    <div class="hd"><h3>{{ t.name }}</h3><div class="spacer"></div>
+      <span class="badge b-grey">{{ t.rows }} rows</span></div>
+    <div class="bd">
+      <div class="table-wrap"><table>
+        <thead><tr><th>Column</th><th>Type</th><th>Null</th><th>Default</th><th>Key</th></tr></thead>
+        <tbody>
+        {% for c in t.columns %}
+          <tr>
+            <td class="mono small">{{ c.name }}</td>
+            <td class="small muted">{{ c.type }}</td>
+            <td class="small">{{ 'NOT NULL' if c.notnull else '' }}</td>
+            <td class="small mono tiny faint">{{ c.dflt_value or '' }}</td>
+            <td>
+              {% if c.pk %}<span class="badge b-blue">PK</span>{% endif %}
+              {% for fk in t.foreign_keys %}
+                {% if fk['from'] == c.name %}
+                  <span class="badge b-grey" title="references {{ fk.table }}.{{ fk.to }}">FK</span>
+                {% endif %}
+              {% endfor %}
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table></div>
+      <details style="margin-top:12px">
+        <summary class="small muted" style="cursor:pointer">CREATE statement</summary>
+        <pre class="sql" style="margin-top:9px">{{ t.sql }}</pre>
+      </details>
+    </div>
+  </div>
+{% endfor %}
+
+<div class="card">
+  <div class="hd"><h3>Views</h3></div>
+  <div class="bd">
+    {% for v in views %}
+      <details style="margin-bottom:9px">
+        <summary style="cursor:pointer"><b class="mono small">{{ v.name }}</b></summary>
+        <pre class="sql" style="margin-top:9px">{{ v.sql }}</pre>
+      </details>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="card">
+  <div class="hd"><h3>Triggers</h3></div>
+  <div class="bd">
+    {% for t in triggers %}
+      <details style="margin-bottom:9px">
+        <summary style="cursor:pointer">
+          <b class="mono small">{{ t.name }}</b>
+          <span class="tiny faint">on {{ t.tbl_name }}</span></summary>
+        <pre class="sql" style="margin-top:9px">{{ t.sql }}</pre>
+      </details>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

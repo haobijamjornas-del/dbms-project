@@ -1,0 +1,89 @@
+{% macro level_badge(name) -%}
+  <span class="badge b-{{ (name or 'grey')|lower }}">{{ name or '—' }}</span>
+{%- endmacro %}
+
+{% macro priority_badge(p) -%}
+  {% if p == 'CRITICAL' %}<span class="badge b-critical">Critical</span>
+  {% elif p == 'HIGH' %}<span class="badge b-high">High</span>
+  {% elif p == 'MEDIUM' %}<span class="badge b-moderate">Medium</span>
+  {% else %}<span class="badge b-grey">{{ (p or '')|title }}</span>{% endif %}
+{%- endmacro %}
+
+{% macro status_label(s) -%}
+  {{ {'OPEN': 'Open', 'ACKNOWLEDGED': 'Acknowledged', 'RESOLVED': 'Resolved', 'DISMISSED': 'Dismissed',
+      'SCHEDULED': 'Scheduled', 'COMPLETED': 'Completed', 'CANCELLED': 'Cancelled', 'NO_SHOW': 'No-show',
+      'IN_PROGRESS': 'In progress', 'ABANDONED': 'Abandoned'}.get(s, s) }}
+{%- endmacro %}
+
+{% macro status_badge(s) -%}
+  {% if s in ('OPEN','SCHEDULED') %}<span class="badge b-blue">{{ status_label(s) }}</span>
+  {% elif s in ('RESOLVED','COMPLETED') %}<span class="badge b-low">{{ status_label(s) }}</span>
+  {% elif s in ('ACKNOWLEDGED','IN_PROGRESS') %}<span class="badge b-moderate">{{ status_label(s) }}</span>
+  {% else %}<span class="badge b-grey">{{ status_label(s) }}</span>{% endif %}
+{%- endmacro %}
+
+{% macro alert_label(t) -%}
+  {{ {'HIGH_STRESS': 'High stress in an entry', 'REPEATED_HIGH': 'Repeated high stress',
+      'CRISIS_KEYWORD': 'Crisis language', 'CRITICAL_ITEM': 'Self-harm question flagged',
+      'SUSTAINED_DECLINE': 'Getting steadily worse'}.get(t, t) }}
+{%- endmacro %}
+
+{% macro bar_chart(rows, suffix='') %}
+  {% set peak = (rows | map(attribute=1) | max) or 1 %}
+  <div class="bars">
+    {% for label, value, colour in rows %}
+      <div class="bar-row">
+        <div class="lbl" title="{{ label }}">{{ label }}</div>
+        <div class="bar-track">
+          <div class="bar-fill" style="width:{{ (value / peak * 100) if peak else 0 }}%;
+               background:{{ colour }}"></div>
+        </div>
+        <div class="val">{{ value }}{{ suffix }}</div>
+      </div>
+    {% endfor %}
+  </div>
+{% endmacro %}
+
+{% macro stacked_bar(low, moderate, high) %}
+  {% set tot = (low + moderate + high) or 1 %}
+  <div class="bar-track" title="Low {{ low }} · Medium {{ moderate }} · High {{ high }}">
+    <div class="bar-fill" style="width:{{ low/tot*100 }}%; background:var(--low)"></div>
+    <div class="bar-fill" style="width:{{ moderate/tot*100 }}%; background:var(--moderate)"></div>
+    <div class="bar-fill" style="width:{{ high/tot*100 }}%; background:var(--high)"></div>
+  </div>
+{% endmacro %}
+
+{% macro donut(segments, total, caption) %}
+  {% set tot = total or 1 %}
+  {% set ns = namespace(acc=0, stops=[]) %}
+  {% for value, colour in segments %}
+    {% set start = ns.acc / tot * 360 %}
+    {% set ns.acc = ns.acc + value %}
+    {% set end = ns.acc / tot * 360 %}
+    {% set _ = ns.stops.append(colour ~ ' ' ~ start ~ 'deg ' ~ end ~ 'deg') %}
+  {% endfor %}
+  <div class="donut" style="background:conic-gradient({{ ns.stops | join(', ') }});
+       border-radius:50%">
+    <div style="position:absolute; inset:19px; background:var(--surface); border-radius:50%"></div>
+    <div class="center"><b>{{ total }}</b><span>{{ caption }}</span></div>
+  </div>
+{% endmacro %}
+
+{% macro sparkline(values, colour='var(--brand)') %}
+  {% set peak = (values | max) or 1 %}
+  <div class="spark">
+    {% for v in values %}
+      <div style="height:{{ (v / peak * 100) if peak else 0 }}%; background:{{ colour }}"
+           title="{{ v }}"></div>
+    {% endfor %}
+  </div>
+{% endmacro %}
+
+{% macro confidence_bar(pct) %}
+  <div style="display:flex; align-items:center; gap:8px">
+    <div class="bar-track" style="width:60px; height:6px">
+      <div class="bar-fill" style="width:{{ pct }}%; background:var(--brand)"></div>
+    </div>
+    <span class="tiny muted">{{ pct }}%</span>
+  </div>
+{% endmacro %}

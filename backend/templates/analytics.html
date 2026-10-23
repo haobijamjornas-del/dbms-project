@@ -1,0 +1,315 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block title %}Analytics · MindCare{% endblock %}
+{% block heading %}Analytics{% endblock %}
+{% block subheading %}Patterns across departments, years and stressors{% endblock %}
+
+{% block content %}
+<div class="grid g2">
+  <div class="card">
+    <div class="hd"><h3>Department comparison</h3><div class="spacer"></div></div>
+    <div class="bd tight table-wrap">
+      <table>
+        <thead><tr><th>Dept</th><th class="num">Students</th><th class="num">Entries</th>
+          <th class="num">Avg score</th><th class="num">High %</th><th style="width:110px"></th></tr></thead>
+        <tbody>
+        {% for d in depts %}
+          <tr>
+            <td><b>{{ d.dept_code }}</b><div class="tiny faint">{{ d.dept_name|truncate(28) }}</div></td>
+            <td class="num">{{ d.students_assessed }}/{{ d.enrolled_students }}</td>
+            <td class="num">{{ d.total_assessments }}</td>
+            <td class="num">{{ d.avg_stress_score or '—' }}</td>
+            <td class="num"><b>{{ d.high_stress_pct or 0 }}%</b></td>
+            <td><div class="bar-track" style="height:8px">
+              <div class="bar-fill" style="width:{{ d.high_stress_pct or 0 }}%;
+                   background:var(--high)"></div></div></td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="hd"><h3>Stress by year of study</h3></div>
+    <div class="bd">
+      <div class="table-wrap"><table>
+        <thead><tr><th>Year</th><th class="num">Entries</th><th class="num">Avg score</th>
+          <th class="num">High</th><th style="width:120px"></th></tr></thead>
+        <tbody>
+        {% for y in by_year %}
+          <tr>
+            <td><b>Year {{ y.yr }}</b></td>
+            <td class="num">{{ y.n }}</td>
+            <td class="num">{{ y.avg_lvl }}</td>
+            <td class="num">{{ y.high }}</td>
+            <td><div class="bar-track" style="height:8px">
+              <div class="bar-fill" style="width:{{ y.avg_lvl / 2 * 100 }}%;
+                   background:var(--brand)"></div></div></td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table></div>
+
+      <h4 style="margin-top:18px" class="muted tiny"
+          >Hosteller vs day scholar</h4>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Group</th><th class="num">Entries</th>
+          <th class="num">Avg score</th><th class="num">High %</th></tr></thead>
+        <tbody>
+        {% for h in by_hostel %}
+          <tr><td>{{ h.grp }}</td><td class="num">{{ h.n }}</td>
+            <td class="num">{{ h.avg_lvl }}</td><td class="num"><b>{{ h.high_pct }}%</b></td></tr>
+        {% endfor %}
+        </tbody>
+      </table></div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="hd"><h3>Stressor themes</h3><div class="spacer"></div>
+    <span class="legend">
+      <span><span class="dot" style="background:var(--low)"></span>Low</span>
+      <span><span class="dot" style="background:var(--moderate)"></span>Medium</span>
+      <span><span class="dot" style="background:var(--high)"></span>High</span>
+    </span></div>
+  <div class="bd tight table-wrap">
+    <table>
+      <thead><tr><th>Theme</th><th>Category</th><th class="num">Total</th>
+        <th style="width:220px">Severity mix</th><th class="num">High %</th></tr></thead>
+      <tbody>
+      {% for t in themes %}
+        <tr>
+          <td><b>{{ t.theme_name }}</b></td>
+          <td><span class="badge b-grey">{{ t.category }}</span></td>
+          <td class="num">{{ t.total }}</td>
+          <td>{{ m.stacked_bar(t.low, t.moderate, t.high) }}</td>
+          <td class="num"><b style="color:{{ 'var(--high)' if t.high_pct >= 40 else 'inherit' }}">
+            {{ t.high_pct }}%</b></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="grid g2">
+  <div class="card">
+    <div class="hd"><h3>Entries by hour of day</h3><div class="spacer"></div>
+      <span class="tiny faint">colour = mean stress that hour</span></div>
+    <div class="bd">
+      <div style="display:flex; align-items:flex-end; gap:2px; height:120px">
+        {% set peak = (by_hour | map(attribute='n') | max) or 1 %}
+        {% for h in by_hour %}
+          <div style="flex:1; height:{{ h.n / peak * 100 }}%; border-radius:2px 2px 0 0;
+                      background:{{ 'var(--high)' if h.avg_lvl >= 1.2
+                                    else ('var(--moderate)' if h.avg_lvl >= 0.9 else 'var(--low)') }}"
+               title="{{ '%02d'|format(h.hr) }}:00 — {{ h.n }} entries, mean {{ h.avg_lvl }}"></div>
+        {% endfor %}
+      </div>
+      <div class="tiny faint" style="display:flex; justify-content:space-between; margin-top:7px">
+        <span>00:00</span><span>12:00</span><span>23:00</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="hd"><h3>Alert handling</h3></div>
+    <div class="bd">
+      <div class="grid g2" style="margin-bottom:14px">
+        <div class="stat ok" style="box-shadow:none">
+          <div class="k">Alerts resolved</div>
+          <div class="v">{{ response.resolved_count or 0 }}</div></div>
+        <div class="stat accent" style="box-shadow:none">
+          <div class="k">Mean time to resolve</div>
+          <div class="v">{{ response.avg_hours or '—' }}<span style="font-size:1rem">h</span></div></div>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Type</th><th>Priority</th><th>Status</th><th class="num">Count</th></tr></thead>
+        <tbody>
+        {% for a in alert_stats %}
+          <tr>
+            <td class="small">{{ m.alert_label(a.alert_type) }}</td>
+            <td>{{ m.priority_badge(a.priority) }}</td>
+            <td>{{ m.status_badge(a.status) }}</td>
+            <td class="num">{{ a.n }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table></div>
+    </div>
+  </div>
+</div>
+
+<div class="grid g2">
+  <div class="card">
+    <div class="hd"><h3>Most frequent lexicon words</h3><div class="spacer"></div></div>
+    <div class="bd tight table-wrap">
+      <table>
+        <thead><tr><th>Word</th><th>Category</th><th class="num">Weight</th>
+          <th class="num">Uses</th><th class="num">In high entries</th></tr></thead>
+        <tbody>
+        {% for k in keywords %}
+          <tr>
+            <td><b>{{ k.word }}</b></td>
+            <td class="small muted">{{ k.category }}</td>
+            <td class="num small">{{ k.weight }}</td>
+            <td class="num">{{ k.uses }}</td>
+            <td class="num">
+              <span class="badge {{ 'b-high' if k.in_high > k.uses / 2 else 'b-grey' }}">
+                {{ k.in_high }}</span></td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="hd"><h3>Capture channel</h3></div>
+    <div class="bd">
+      {% set sb = [] %}
+      {% for s in source_mix %}{% set _ = sb.append((s.source, s.n, 'var(--brand)')) %}{% endfor %}
+      {{ m.bar_chart(sb) }}
+      <h4 style="margin-top:20px" class="muted tiny">Training data breakdown</h4>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Level</th><th>Theme category</th><th class="num">Rows</th></tr></thead>
+        <tbody>
+        {% for c in corpus %}
+          <tr><td>{{ m.level_badge(c.level_name) }}</td>
+            <td class="small">{{ c.category }}</td><td class="num">{{ c.n }}</td></tr>
+        {% endfor %}
+        </tbody>
+      </table></div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="hd"><h3>Screening severity bands</h3><div class="spacer"></div>
+    <span class="tiny faint">PHQ-9 · GAD-7 · PSS-10</span></div>
+  <div class="bd">
+    <div class="grid g3">
+      {% set ns = namespace(code='') %}
+      {% for r in band_mix %}
+        {% if r.code != ns.code %}
+          {% if not loop.first %}</div>{% endif %}
+          {% set ns.code = r.code %}
+          <div>
+          <h4 style="margin-bottom:9px">{{ r.code }}
+            <span class="tiny faint" style="font-weight:400">{{ r.measures }}</span></h4>
+        {% endif %}
+        <div style="margin-bottom:9px">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px">
+            <span class="dot" style="background:{{ r.color_hex }}"></span>
+            <span class="small">{{ r.band_name }}</span>
+            <span class="tiny faint mono">{{ r.score_range }}</span>
+            <span style="flex:1"></span>
+            <b class="small">{{ r.students }}</b>
+            <span class="tiny faint">{{ r.pct or 0 }}%</span>
+          </div>
+          <div class="bar-track" style="height:7px">
+            <div class="bar-fill" style="width:{{ r.pct or 0 }}%;
+                 background:{{ r.color_hex }}"></div>
+          </div>
+        </div>
+        {% if loop.last %}</div>{% endif %}
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<div class="grid g2">
+  <div class="card">
+    <div class="hd"><h3>Hardest questions</h3><div class="spacer"></div></div>
+    <div class="bd tight table-wrap">
+      <table>
+        <thead><tr><th>Instr.</th><th>#</th><th>Question</th>
+          <th class="num">Mean</th><th style="width:90px">% of max</th></tr></thead>
+        <tbody>
+        {% for it in worst_items %}
+          <tr>
+            <td><span class="badge b-grey">{{ it.instrument_code }}</span></td>
+            <td class="num tiny faint">{{ it.item_no }}</td>
+            <td class="small" style="max-width:300px">{{ it.question_text|truncate(72) }}
+              {% if it.reverse_scored %}
+                <span class="tiny faint">(reverse)</span>{% endif %}
+              {% if it.is_critical %}
+                <span class="badge b-critical" style="font-size:.62rem">critical</span>{% endif %}</td>
+            <td class="num small">{{ it.avg_raw }}</td>
+            <td><div class="bar-track" style="height:7px">
+              <div class="bar-fill" style="width:{{ it.avg_pct_of_max }}%;
+                   background:var(--high)"></div></div>
+              <span class="tiny faint">{{ it.avg_pct_of_max }}%</span></td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="hd"><h3>Questionnaire vs. text model</h3></div>
+    <div class="bd">
+      <div class="table-wrap"><table>
+        <thead><tr><th>Composite band</th><th class="num">Text: Low</th>
+          <th class="num">Medium</th><th class="num">High</th>
+          <th class="num">Total</th><th class="num">Mean composite</th></tr></thead>
+        <tbody>
+        {% for a in agreement %}
+          <tr>
+            <td>{{ m.level_badge(a.composite_band) }}</td>
+            <td class="num">{{ a.text_low }}</td>
+            <td class="num">{{ a.text_moderate }}</td>
+            <td class="num">{{ a.text_high }}</td>
+            <td class="num">{{ a.total }}</td>
+            <td class="num"><b>{{ a.avg_composite }}</b></td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table></div>
+      <div class="tiny muted" style="margin-top:11px">Demo data: this agreement comes from how the sample answers were generated, not a real finding.</div>
+
+      <h4 style="margin-top:18px" class="muted tiny">By department</h4>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Dept</th><th class="num">Screenings</th>
+          <th class="num">Composite</th><th class="num">PHQ-9</th>
+          <th class="num">GAD-7</th><th class="num">PSS-10</th></tr></thead>
+        <tbody>
+        {% for d in dept_screening %}
+          <tr><td><b>{{ d.dept_code }}</b></td>
+            <td class="num">{{ d.screenings }}</td>
+            <td class="num"><b>{{ d.avg_composite }}</b></td>
+            <td class="num small">{{ d.avg_phq9 }}</td>
+            <td class="num small">{{ d.avg_gad7 }}</td>
+            <td class="num small">{{ d.avg_pss10 }}</td></tr>
+        {% endfor %}
+        </tbody>
+      </table></div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="hd"><h3>45-day trend</h3><div class="spacer"></div></div>
+  <div class="bd">
+    {% if trend %}
+      <div style="display:flex; align-items:flex-end; gap:3px; height:160px">
+        {% set peak = (trend | map(attribute='total') | max) or 1 %}
+        {% for d in trend %}
+          <div style="flex:1; display:flex; flex-direction:column-reverse; min-width:4px;
+                      height:{{ d.total / peak * 100 }}%; gap:1px"
+               title="{{ d.entry_date }} — {{ d.total }} entries · mean {{ d.avg_stress_score }}">
+            {% set t = d.total or 1 %}
+            <div style="height:{{ d.low/t*100 }}%; background:var(--low)"></div>
+            <div style="height:{{ d.moderate/t*100 }}%; background:var(--moderate)"></div>
+            <div style="height:{{ d.high/t*100 }}%; background:var(--high)"></div>
+          </div>
+        {% endfor %}
+      </div>
+      <div class="tiny faint" style="display:flex; justify-content:space-between; margin-top:7px">
+        <span>{{ trend[0].entry_date }}</span><span>{{ trend[-1].entry_date }}</span></div>
+    {% else %}<div class="empty">No data in this window.</div>{% endif %}
+  </div>
+</div>
+{% endblock %}

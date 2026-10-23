@@ -1,0 +1,235 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% import "_icons.html" as ic %}
+{% block title %}{{ s.full_name }} · MindCare{% endblock %}
+{% block heading %}{{ s.full_name }}{% endblock %}
+{% block subheading %}{{ s.enrollment_no }} · {{ s.dept_name }} · Year {{ s.year_of_study }} ·
+  {{ s.hostel_status }}{% endblock %}
+{% block topbar_actions %}
+  {% if g.user.role != 'student' %}
+    <a class="btn btn-primary" href="{{ url_for('assessments.create') }}">New entry</a>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="grid g4" style="margin-bottom:18px">
+  <div class="stat accent"><div class="k">Entries</div>
+    <div class="v">{{ profile.total_assessments }}</div>
+    <div class="d">last {{ profile.last_assessed_at|ago if profile.last_assessed_at else '—' }}</div></div>
+  <div class="stat danger"><div class="k">High readings</div>
+    <div class="v">{{ profile.high_count }}</div>
+    <div class="d">{{ profile.moderate_count }} moderate · {{ profile.low_count }} low</div></div>
+  <div class="stat {{ 'danger' if profile.risk_index >= 50 else 'ok' }}">
+    <div class="k">Risk index</div><div class="v">{{ profile.risk_index }}</div>
+    <div class="d">mean score {{ profile.avg_stress_score or 0 }} / 2</div></div>
+  <div class="stat"><div class="k">Sessions</div>
+    <div class="v">{{ sessions | length }}</div>
+    <div class="d">{{ alerts | length }} alerts raised</div></div>
+</div>
+
+<div class="grid g23">
+  <div>
+    {% if trend %}
+    <div class="card">
+      <div class="hd"><h3>Stress trajectory</h3><div class="spacer"></div>
+        <span class="tiny faint">daily mean over all entries</span></div>
+      <div class="bd">
+        <div style="display:flex; align-items:flex-end; gap:3px; height:120px">
+          {% for d in trend %}
+            {% set h = (d.avg_lvl / 2 * 100) if d.avg_lvl else 4 %}
+            <div style="flex:1; min-width:5px; height:{{ h if h > 4 else 4 }}%;
+                        border-radius:3px 3px 0 0;
+                        background:{{ 'var(--high)' if d.avg_lvl >= 1.5
+                                      else ('var(--moderate)' if d.avg_lvl >= 0.75 else 'var(--low)') }}"
+                 title="{{ d.d }} — mean {{ d.avg_lvl }} ({{ d.n }} entries)"></div>
+          {% endfor %}
+        </div>
+        <div class="tiny faint" style="display:flex; justify-content:space-between; margin-top:7px">
+          <span>{{ trend[0].d }}</span><span>{{ trend[-1].d }}</span></div>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="card">
+      <div class="hd"><h3>Assessment history</h3><div class="spacer"></div>
+        <span class="tiny faint">most recent 25</span></div>
+      <div class="bd tight table-wrap">
+        <table>
+          <thead><tr><th>When</th><th>Entry</th><th>Level</th><th class="num">Conf.</th>
+            <th>Theme</th><th></th></tr></thead>
+          <tbody>
+          {% for a in assessments %}
+            <tr>
+              <td class="small muted" style="white-space:nowrap">{{ a.created_at|dt('%d %b, %H:%M') }}</td>
+              <td class="small" style="max-width:300px">{{ a.entry_text|truncate(80) }}</td>
+              <td>{{ m.level_badge(a.stress_level) }}</td>
+              <td class="num small">{{ a.confidence_pct }}%</td>
+              <td class="small">{{ a.theme_name or '—' }}</td>
+              <td><a class="btn btn-sm" href="{{ url_for('assessments.detail', assessment_id=a.assessment_id) }}">View</a></td>
+            </tr>
+          {% else %}
+            <tr><td colspan="6" class="empty">No assessments recorded.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    {% if screenings %}
+    <div class="card">
+      <div class="hd"><h3>Structured screenings</h3><div class="spacer"></div></div>
+      <div class="bd tight table-wrap">
+        <table>
+          <thead><tr><th>Completed</th><th class="num">Composite</th><th>Band</th>
+            <th>Text reading</th><th>Flags</th><th></th></tr></thead>
+          <tbody>
+          {% for sc in screenings %}
+            <tr>
+              <td class="small" style="white-space:nowrap">{{ sc.completed_at|dt }}
+                {% if sc.is_baseline %}<div class="tiny faint">baseline</div>{% endif %}</td>
+              <td class="num"><b>{{ sc.composite_score }}</b>
+                <span class="tiny faint">/100</span></td>
+              <td>{{ m.level_badge(sc.composite_band) }}</td>
+              <td>{{ m.level_badge(sc.text_level) if sc.text_level else '—' }}</td>
+              <td>{% if sc.critical_flags %}
+                  <span class="badge b-critical">{{ sc.critical_flags }}</span>
+                {% else %}<span class="tiny faint">—</span>{% endif %}</td>
+              <td><a class="btn btn-sm"
+                     href="{{ url_for('screening.result', screening_id=sc.screening_id) }}">Report</a></td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if wellness %}
+    <div class="card">
+      <div class="hd"><h3>Wellness log vs. same-day stress</h3><div class="spacer"></div></div>
+      <div class="bd tight table-wrap">
+        <table>
+          <thead><tr><th>Date</th><th class="num">Sleep</th><th class="num">Mood</th>
+            <th class="num">Exercise</th><th class="num">Screen</th>
+            <th class="num">Entries</th><th class="num">Avg stress</th></tr></thead>
+          <tbody>
+          {% for w in wellness %}
+            <tr>
+              <td class="small">{{ w.log_date }}</td>
+              <td class="num small">{{ w.sleep_hours }}h</td>
+              <td class="num small">{{ w.mood_rating }}/10</td>
+              <td class="num small">{{ w.exercise_min }}m</td>
+              <td class="num small">{{ w.screen_time_hrs }}h</td>
+              <td class="num small">{{ w.entries_that_day }}</td>
+              <td class="num small">
+                {% if w.avg_stress_that_day is not none %}<b>{{ w.avg_stress_that_day }}</b>
+                {% else %}<span class="faint">—</span>{% endif %}</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <div>
+    <div class="card">
+      <div class="hd"><h3>Details</h3></div>
+      <div class="bd">
+        <dl class="kv">
+          <dt>Enrollment</dt><dd class="mono tiny">{{ s.enrollment_no }}</dd>
+          <dt>Email</dt><dd class="tiny">{{ s.email }}</dd>
+          <dt>Phone</dt><dd>{{ s.phone or '—' }}</dd>
+          <dt>Gender</dt><dd>{{ s.gender or '—' }}</dd>
+          <dt>Department</dt><dd>{{ s.dept_name }}</dd>
+          <dt>Year</dt><dd>{{ s.year_of_study }}</dd>
+          <dt>Residence</dt><dd>{{ s.hostel_status }}</dd>
+          <dt>Admitted</dt><dd>{{ s.admission_year }}</dd>
+        </dl>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="hd"><h3>Brain puzzles</h3><div class="spacer"></div>
+        {% if g.user.role == 'student' %}<a class="btn btn-sm" href="{{ url_for('puzzles.index') }}">Play</a>{% endif %}</div>
+      <div class="bd">
+        {% for p in puzzles %}
+          <a class="puzzle-mini" href="{{ url_for('puzzles.result', attempt_id=p.attempt_id) }}">
+            <span class="puzzle-mini-score" style="color:{{ p.band_color }}">{{ p.accuracy_pct|round|int }}%</span>
+            <span class="puzzle-mini-copy"><b class="small">{{ p.band }}</b>
+              <span class="tiny faint">{{ p.age_group }} · {{ p.correct_items }}/{{ p.total_items }} · {{ p.completed_at|dt('%d %b %Y') }}</span></span>
+            {{ ic.icon('chevron', 16) }}
+          </a>
+        {% else %}
+          <div class="empty small" style="padding:16px 8px">No puzzle sets completed yet.</div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="hd"><h3>City Rescue</h3><div class="spacer"></div>
+        {% if g.user.role == 'student' %}<a class="btn btn-sm" href="{{ url_for('game.index') }}">Play</a>{% endif %}</div>
+      <div class="bd">
+        {% for gm in games %}
+          <a class="puzzle-mini" href="{{ url_for('game.result', game_id=gm.game_id) }}">
+            <span class="puzzle-mini-score">{{ gm.score }}</span>
+            <span class="puzzle-mini-copy"><b class="small">{{ gm.correct_rounds }} of {{ gm.rounds }} right · {{ '★' * gm.stars }}{{ '☆' * (3 - gm.stars) }}</b>
+              <span class="tiny faint">{{ gm.age_group }} · {{ gm.completed_at|dt('%d %b %Y') }}</span></span>
+            {{ ic.icon('chevron', 16) }}
+          </a>
+        {% else %}
+          <div class="empty small" style="padding:16px 8px">No games played yet.</div>
+        {% endfor %}
+      </div>
+    </div>
+
+    {% if themes %}
+    <div class="card">
+      <div class="hd"><h3>Recurring themes</h3></div>
+      <div class="bd">
+        {% set tb = [] %}
+        {% for t in themes %}{% set _ = tb.append((t.theme_name, t.n, 'var(--brand)')) %}{% endfor %}
+        {{ m.bar_chart(tb) }}
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="card">
+      <div class="hd"><h3>Alerts</h3></div>
+      <div class="bd">
+        {% for a in alerts %}
+          <div style="padding:9px 0; border-bottom:1px solid var(--border)">
+            <div style="display:flex; gap:7px; align-items:center; flex-wrap:wrap">
+              {{ m.priority_badge(a.priority) }} {{ m.status_badge(a.status) }}
+            </div>
+            <div class="tiny muted" style="margin-top:4px">
+              {{ m.alert_label(a.alert_type) }} · {{ a.raised_at|ago }}
+              {% if a.counsellor_name %}· {{ a.counsellor_name }}{% endif %}</div>
+          </div>
+        {% else %}
+          <div class="empty small">No alerts raised.</div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="hd"><h3>Counselling sessions</h3></div>
+      <div class="bd">
+        {% for c in sessions %}
+          <div style="padding:9px 0; border-bottom:1px solid var(--border)">
+            <div style="display:flex; gap:8px; align-items:center">
+              <b class="small">{{ c.scheduled_at|dt }}</b>
+              <span style="flex:1"></span>{{ m.status_badge(c.status) }}
+            </div>
+            <div class="tiny muted" style="margin-top:3px">
+              {{ c.counsellor_name }} · {{ c.mode }} · {{ c.duration_min }} min</div>
+          </div>
+        {% else %}
+          <div class="empty small">No sessions booked.</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block title %}Students · MindCare{% endblock %}
+{% block heading %}Students{% endblock %}
+{% block subheading %}{{ total }} student{{ '' if total == 1 else 's' }}, highest risk first{% endblock %}
+
+{% block content %}
+<div id="students-table" class="datatable">
+<div class="card">
+  <div class="loading-bar"></div>
+  <div class="bd">
+    <form method="get" class="filters">
+      <div class="field search-field" style="flex:2; min-width:200px">
+        <label for="student-search">Search</label>
+        <input type="text" id="student-search" name="q" value="{{ q }}"
+               data-role="search" autocomplete="off"
+               placeholder="Name or enrollment number">
+      </div>
+      <div class="field">
+        <label>Department</label>
+        <select name="dept" data-filter="dept">
+          <option value="">All</option>
+          {% for d in departments %}
+            <option value="{{ d.dept_id }}" {{ 'selected' if dept == d.dept_id }}>{{ d.dept_code }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label>Year</label>
+        <select name="year" data-filter="year">
+          <option value="">All</option>
+          {% for y in [1,2,3,4] %}
+            <option value="{{ y }}" {{ 'selected' if year == y }}>Year {{ y }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label>Risk</label>
+        <select name="risk" data-filter="risk">
+          <option value="">All</option>
+          <option value="high" {{ 'selected' if risk == 'high' }}>High (50+)</option>
+          <option value="medium" {{ 'selected' if risk == 'medium' }}>Medium (25–49)</option>
+          <option value="low" {{ 'selected' if risk == 'low' }}>Low (&lt; 25)</option>
+        </select>
+      </div>
+      <div class="field no-js-only">
+        <button class="btn btn-primary" type="submit">Filter</button>
+      </div>
+      <div class="field">
+        <a class="btn" href="{{ url_for('students.index') }}" data-role="reset">Reset</a>
+      </div>
+      <div class="field js-only" style="flex:0 0 auto; align-self:flex-end">
+        <span class="tiny faint" data-role="count">{{ total }} records</span>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="bd tight table-wrap">
+    <table>
+      <thead><tr>
+        <th data-sort="name">Student</th>
+        <th data-sort="dept">Dept</th>
+        <th class="num" data-sort="year">Year</th>
+        <th class="num" data-sort="entries">Entries</th>
+        <th style="width:150px">Levels</th>
+        <th class="num" data-sort="avg">Average level</th>
+        <th>Latest level</th>
+        <th class="num" data-sort="risk">Risk score</th>
+        <th></th>
+      </tr></thead>
+      <tbody>
+      {% for s in rows %}
+        <tr>
+          <td>
+            <a href="{{ url_for('students.detail', student_id=s.student_id) }}"><b>{{ s.full_name }}</b></a>
+            <div class="tiny faint mono">{{ s.enrollment_no }}</div>
+          </td>
+          <td><span class="badge b-grey">{{ s.dept_code }}</span></td>
+          <td class="num">{{ s.year_of_study }}</td>
+          <td class="num">{{ s.total_assessments }}</td>
+          <td>
+            {% if s.total_assessments %}
+              {{ m.stacked_bar(s.low_count, s.moderate_count, s.high_count) }}
+            {% else %}<span class="tiny faint">no entries</span>{% endif %}
+          </td>
+          <td class="num">{{ s.avg_stress_score if s.avg_stress_score is not none else '—' }}</td>
+          <td>{{ m.level_badge(s.latest_level) }}</td>
+          <td class="num">
+            <b style="color:{{ 'var(--high)' if s.risk_index >= 50
+                          else ('var(--moderate)' if s.risk_index >= 25 else 'var(--low)') }}">
+              {{ s.risk_index }}</b>
+          </td>
+          <td><a class="btn btn-sm" href="{{ url_for('students.detail', student_id=s.student_id) }}">Open</a></td>
+        </tr>
+      {% else %}
+        <tr><td colspan="9" class="empty">No students match these filters.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="pager js-only" data-role="pager"></div>
+
+  {% if pages > 1 %}
+  <div class="pager no-js-only">
+    {% if page > 1 %}
+      <a href="{{ url_for('students.index', q=q, dept=dept, year=year, risk=risk, page=page-1) }}">← Prev</a>
+    {% endif %}
+    {% for p in range(1, pages + 1) %}
+      {% if p == page %}<span class="cur">{{ p }}</span>
+      {% elif p <= 2 or p > pages - 2 or (p >= page - 1 and p <= page + 1) %}
+        <a href="{{ url_for('students.index', q=q, dept=dept, year=year, risk=risk, page=p) }}">{{ p }}</a>
+      {% elif p == 3 or p == pages - 2 %}<span class="faint">…</span>{% endif %}
+    {% endfor %}
+    {% if page < pages %}
+      <a href="{{ url_for('students.index', q=q, dept=dept, year=year, risk=risk, page=page+1) }}">Next →</a>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+
+</div>
+{% endblock %}

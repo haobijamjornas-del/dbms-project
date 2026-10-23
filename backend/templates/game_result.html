@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% import "_icons.html" as ic %}
+{% import "_town.html" as town %}
+{% set gm = game %}
+{% set is_student = g.user.role == 'student' %}
+{% block title %}City Rescue results · MindCare{% endblock %}
+{% block heading %}{% if is_student %}Your City Rescue results{% else %}City Rescue · {{ gm.student_name }}{% endif %}{% endblock %}
+{% block subheading %}{{ gm.age_group }} level{% if gm.age_at_play %} · age {{ gm.age_at_play }}{% endif %} · {{ gm.completed_at|dt }}{% endblock %}
+{% block topbar_actions %}
+  {% if is_student %}
+    <a class="btn" href="{{ url_for('game.index') }}">All games</a>
+    <form method="post" action="{{ url_for('game.start') }}" style="display:contents">
+      <button class="btn btn-primary" type="submit">{{ ic.icon('siren', 16) }} Play again</button>
+    </form>
+  {% else %}
+    <a class="btn" href="{{ url_for('students.detail', student_id=gm.student_id) }}">Student profile</a>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+{% set messages = {3: 'Brilliant. You knew where to send almost every emergency.',
+                   2: 'Well done. You got most of them right, and the rest are worth remembering.',
+                   1: 'A good start. Look through the ones you missed below; they are easy to learn.',
+                   0: 'Emergencies are tricky. Read the explanations below and try again. You will improve quickly.'} %}
+<div class="card result-hero rescue-result">
+  <div class="bd">
+    <div class="rescue-score">
+      {{ town.stars(gm.stars, 34) }}
+      <b>{{ gm.score }}<span>/{{ gm.max_score }}</span></b>
+      <span class="tiny faint">points</span>
+    </div>
+    <div class="result-copy">
+      <h2>{% if is_student %}{{ messages[gm.stars] }}{% else %}{{ gm.student_name|firstname }} sent {{ gm.correct_rounds }} of {{ gm.rounds }} emergencies to the right place.{% endif %}</h2>
+      <div class="result-facts">
+        <span>{{ ic.icon('check', 15) }} <b>{{ gm.correct_rounds }}</b> of {{ gm.rounds }} right</span>
+        <span>{{ ic.icon('clock', 15) }} <b>{{ ((gm.avg_response_ms or 0) / 1000)|round(1) }} s</b> per choice</span>
+        {% if gm.minutes_taken %}<span>{{ ic.icon('history', 15) }} <b>{{ gm.minutes_taken }} min</b> in total</span>{% endif %}
+        {% if previous %}
+          {% set diff = gm.score - (previous.score or 0) %}
+          <span class="{{ 'up' if diff > 0 else ('down' if diff < 0 else '') }}">{{ ic.icon('trend', 15) }}
+            {% if diff > 0 %}<b>{{ diff }} points</b> more than last time
+            {% elif diff < 0 %}<b>{{ -diff }} points</b> fewer than last time
+            {% else %}Same as last time{% endif %}</span>
+        {% else %}
+          <span>{{ ic.icon('star', 15) }} First game</span>
+        {% endif %}
+        {% if best and best.best == gm.score and best.played > 1 %}<span class="up">{{ ic.icon('star', 15) }} <b>Personal best</b></span>{% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="grid g23">
+  <div>
+    <div class="card">
+      <div class="hd"><h3>Every emergency</h3></div>
+      <div class="bd tight table-wrap">
+        <table>
+          <thead><tr><th></th><th>Emergency</th><th>{{ 'You chose' if is_student else 'Chosen' }}</th><th>Right place</th><th class="num">Time</th><th class="num">Points</th></tr></thead>
+          <tbody>
+          {% for r in rounds %}
+            <tr>
+              <td style="width:44px"><span class="round-icon">{{ r.icon }}</span></td>
+              <td><b class="small">{{ r.title }}</b></td>
+              <td class="small">
+                {% if r.chosen_place %}
+                  <span class="review-mark {{ 'ok' if r.is_correct else 'no' }} inline">
+                    {% if r.is_correct %}{{ ic.icon('check', 12) }}{% else %}{{ ic.icon('close', 12) }}{% endif %}</span>
+                  {{ r.chosen_place }}
+                  {% if r.chosen_place == r.correct_place and not r.is_correct %}<span class="tiny faint">(too late)</span>{% endif %}
+                {% else %}<span class="faint">Time ran out</span>{% endif %}</td>
+              <td class="small">{{ r.correct_place }}</td>
+              <td class="num small">{{ ((r.response_ms or 0) / 1000)|round(1) }} s</td>
+              <td class="num"><b>{{ r.points }}</b></td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    {% if missed %}
+    <div class="card">
+      <div class="hd"><h3>Worth remembering</h3></div>
+      <div class="bd">
+        <div class="tip-list">
+          {% for r in missed %}
+            <div class="tip"><b>{{ r.icon }} {{ r.title }} → {{ r.correct_place }}</b>
+              <span class="small muted">{{ r.explanation }}</span></div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <div>
+    <div class="card numbers-card">
+      <div class="hd">{{ ic.icon('phone', 16) }}<h3>Numbers worth knowing</h3></div>
+      <div class="bd">
+        {% for number, what in numbers %}
+          <div class="number-row"><b>{{ number }}</b><span class="small muted">{{ what }}</span></div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="card counsel-card">
+      <div class="hd">{{ ic.icon('heart', 17) }}<h3>{{ 'Why this game?' if is_student else 'For the counselling conversation' }}</h3></div>
+      <div class="bd small">
+        {% if is_student %}
+          <p>Knowing where to turn makes emergencies less frightening. When you already know who helps
+            with what, panic has less room, and you can help yourself and other people faster.</p>
+          <p class="muted" style="margin:0">The counselling centre is on the map for a reason: feeling
+            low, anxious or overwhelmed is something worth getting help for too. If that is you today,
+            Tele-MANAS <b>14416</b> is free, any time.</p>
+        {% else %}
+          <p>A light way to talk about help-seeking. Emergencies sent to the wrong place can show where
+            a student is unsure who to turn to.</p>
+          {% set counsel_miss = missed | selectattr('correct_place', 'equalto', 'Counselling centre') | list %}
+          {% if counsel_miss %}
+            <p class="counsel-flag">They missed {{ counsel_miss|length }} emotional-support
+              emergenc{{ 'y' if counsel_miss|length == 1 else 'ies' }}. It may be worth asking gently whether
+              they know that counselling is there for them.</p>
+          {% endif %}
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

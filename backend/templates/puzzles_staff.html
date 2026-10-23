@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% import "_icons.html" as ic %}
+{% block title %}Brain puzzles · MindCare{% endblock %}
+{% block heading %}Brain puzzles{% endblock %}
+{% block subheading %}Aptitude and focus results across students{% endblock %}
+
+{% block content %}
+<div class="grid g4 stat-row">
+  <div class="stat accent">
+    <div class="k">Puzzle sets completed</div>
+    <div class="v">{{ headline.attempts or 0 }}</div>
+    <div class="d">by {{ headline.students or 0 }} students</div>
+  </div>
+  <div class="stat ok">
+    <div class="k">Average score</div>
+    <div class="v">{{ headline.avg_accuracy or 0 }}%</div>
+    <div class="d">puzzles answered correctly</div>
+  </div>
+  <div class="stat">
+    <div class="k">Average time</div>
+    <div class="v">{{ headline.avg_seconds or 0 }} s</div>
+    <div class="d">per puzzle</div>
+  </div>
+  <div class="stat">
+    <div class="k">Puzzle bank</div>
+    <div class="v">{{ groups|sum(attribute='puzzles') }}</div>
+    <div class="d">across {{ groups|length }} age levels</div>
+  </div>
+</div>
+
+<div class="grid g23">
+  <div>
+    <div class="card">
+      <div class="hd"><h3>Recent results</h3></div>
+      <div class="bd tight table-wrap">
+        <table>
+          <thead><tr><th>Student</th><th>Level</th><th class="num">Score</th><th>Result</th><th class="num">Avg. time</th><th>When</th><th></th></tr></thead>
+          <tbody>
+          {% for a in attempts %}
+            <tr>
+              <td><a href="{{ url_for('students.detail', student_id=a.student_id) }}"><b>{{ a.student_name }}</b></a>
+                <div class="tiny faint">{{ a.dept_code }} · Year {{ a.year_of_study }}</div></td>
+              <td class="small">{{ a.age_group }}{% if a.age_at_attempt %}<div class="tiny faint">age {{ a.age_at_attempt }}</div>{% endif %}</td>
+              <td class="num"><b>{{ a.correct_items }}</b><span class="tiny faint">/{{ a.total_items }}</span></td>
+              <td><span class="badge" style="background:{{ a.band_color }}1a; color:{{ a.band_color }}; border-color:{{ a.band_color }}40">{{ a.band }}</span></td>
+              <td class="num small">{{ ((a.avg_response_ms or 0) / 1000)|round(1) }} s</td>
+              <td class="small muted" style="white-space:nowrap">{{ a.completed_at|ago }}</td>
+              <td><a class="btn btn-sm" href="{{ url_for('puzzles.result', attempt_id=a.attempt_id) }}">Open</a></td>
+            </tr>
+          {% else %}
+            <tr><td colspan="7" class="empty">No student has completed the puzzles yet.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="hd"><h3>Hardest puzzles</h3><div class="spacer"></div>
+        <span class="tiny faint">lowest share answered correctly</span></div>
+      <div class="bd tight table-wrap">
+        <table>
+          <thead><tr><th>Puzzle</th><th>Type</th><th>Level</th><th class="num">Correct</th></tr></thead>
+          <tbody>
+          {% for p in hardest %}
+            <tr>
+              <td class="small" style="max-width:320px">{{ p.prompt|truncate(80) }}
+                {% if not p.is_active %}<span class="badge b-grey" style="margin-left:4px">retired</span>{% endif %}</td>
+              <td class="small">{{ p.category }}</td>
+              <td class="small">{{ p.age_group }}</td>
+              <td class="num"><b>{{ p.pct_correct }}%</b><div class="tiny faint">of {{ p.times_answered }}</div></td>
+            </tr>
+          {% else %}
+            <tr><td colspan="4" class="empty">Not enough answers yet.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="card">
+      <div class="hd"><h3>Score by puzzle type</h3></div>
+      <div class="bd">
+        {% for c in by_category %}
+          <div class="area-row compact">
+            <div class="area-name"><b class="small">{{ c.category }}</b><span class="tiny faint">{{ c.skill }}</span></div>
+            <div class="area-bar"><div class="bar-track" style="height:8px"><div class="bar-fill" style="width:{{ c.accuracy_pct }}%; background:var(--brand)"></div></div></div>
+            <div class="area-score"><b class="small">{{ c.accuracy_pct }}%</b><span class="tiny faint">{{ c.avg_seconds }} s</span></div>
+          </div>
+        {% else %}
+          <div class="empty">No results yet.</div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="hd"><h3>Focus and stress</h3></div>
+      <div class="bd">
+        <p class="tiny muted">Average puzzle score, grouped by each student's stress level just before they played.</p>
+        {% for f in focus %}
+          <div class="area-row compact">
+            <div class="area-name"><span class="badge b-{{ f.level_name|lower }}">{{ f.level_name }}</span></div>
+            <div class="area-bar"><div class="bar-track" style="height:8px"><div class="bar-fill" style="width:{{ f.avg_accuracy }}%; background:{{ f.color_hex }}"></div></div></div>
+            <div class="area-score"><b class="small">{{ f.avg_accuracy }}%</b><span class="tiny faint">{{ f.attempts }} sets</span></div>
+          </div>
+        {% else %}
+          <div class="empty small">Not enough data yet.</div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="hd"><h3>Results by band</h3></div>
+      <div class="bd">
+        {% for b in bands %}
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px">
+            <span class="dot" style="background:{{ b.color_hex }}"></span>
+            <span class="small">{{ b.label }}</span>
+            <span style="flex:1"></span>
+            <b class="small">{{ b.n }}</b>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="hd"><h3>Levels by age</h3></div>
+      <div class="bd tight table-wrap">
+        <table>
+          <thead><tr><th>Level</th><th>Ages</th><th class="num">Sets</th><th class="num">Avg.</th></tr></thead>
+          <tbody>
+          {% for g in by_group %}
+            <tr>
+              <td class="small"><b>{{ g.label }}</b></td>
+              <td class="small" style="white-space:nowrap">{% if g.max_age >= 100 %}{{ g.min_age }}+{% elif g.min_age == 0 %}up to {{ g.max_age }}{% else %}{{ g.min_age }}–{{ g.max_age }}{% endif %}</td>
+              <td class="num small">{{ g.attempts }}</td>
+              <td class="num small">{{ g.avg_accuracy ~ '%' if g.avg_accuracy is not none else '—' }}</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

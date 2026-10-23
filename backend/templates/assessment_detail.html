@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% import "_support.html" as sup %}
+{% block title %}Assessment #{{ a.assessment_id }} · MindCare{% endblock %}
+{% block heading %}Assessment #{{ a.assessment_id }}{% endblock %}
+{% block subheading %}{{ a.student_name }} · {{ a.dept_code }} · {{ a.created_at|dt }}{% endblock %}
+{% block topbar_actions %}
+  <a class="btn" href="{{ url_for('students.detail', student_id=a.student_id) }}">Student profile</a>
+{% endblock %}
+
+{% block content %}
+{% if alert %}
+  <div class="flash flash-{{ 'danger' if alert.priority in ('CRITICAL','HIGH') else 'warning' }}">
+    <div>
+      <b>{{ alert.priority|title }} priority · {{ m.alert_label(alert.alert_type) }}</b><br>
+      Raised {{ alert.raised_at|ago }}, status <b>{{ m.status_label(alert.status)|lower }}</b>{% if alert.counsellor_name %},
+      assigned to {{ alert.counsellor_name }}{% endif %}.
+      {% if alert.remarks %}<br><span class="small">{{ alert.remarks }}</span>{% endif %}
+    </div>
+  </div>
+{% endif %}
+
+<div class="grid g23">
+  <div>
+    <div class="card">
+      <div class="hd"><h3>What was written</h3><div class="spacer"></div>
+        <span class="badge b-grey">{{ a.source }}</span>
+        <span class="tiny faint">{{ a.word_count }} words</span></div>
+      <div class="bd">
+        <div class="quote">{{ a.entry_text }}</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="hd"><h3>What the model found</h3><div class="spacer"></div>
+        <span class="tiny faint mono">{{ a.algorithm }}</span></div>
+      <div class="bd">
+        <div style="display:flex; gap:26px; align-items:center; flex-wrap:wrap; margin-bottom:18px">
+          <div>
+            <div class="tiny muted">
+              Predicted level</div>
+            <div style="font-size:1.9rem; font-weight:680; color:{{ a.color_hex }};
+                        letter-spacing:-.03em">{{ a.stress_level }}</div>
+          </div>
+          <div>
+            <div class="tiny muted">
+              Confidence</div>
+            <div style="font-size:1.9rem; font-weight:680; letter-spacing:-.03em">
+              {{ a.confidence_pct }}%</div>
+          </div>
+          <div>
+            <div class="tiny muted">
+              Topic</div>
+            <div style="font-size:1.15rem; font-weight:620; padding-top:9px">
+              {{ a.theme_name or '—' }}</div>
+            <div class="tiny faint">{{ a.theme_category or '' }}</div>
+          </div>
+        </div>
+
+        <h4 class="muted tiny">
+          How likely each level is</h4>
+        {% set pbars = [] %}
+        {% for s in scores %}
+          {% set _ = pbars.append((s.level_name, (s.probability * 100) | round(2), s.color_hex)) %}
+        {% endfor %}
+        {{ m.bar_chart(pbars, '%') }}
+      </div>
+    </div>
+
+    {% if keywords %}
+    <div class="card">
+      <div class="hd"><h3>Words that stood out</h3><div class="spacer"></div></div>
+      <div class="bd tight table-wrap">
+        <table>
+          <thead><tr><th>Word</th><th>Category</th><th>Polarity</th>
+            <th class="num">Weight</th><th class="num">Count</th></tr></thead>
+          <tbody>
+          {% for k in keywords %}
+            <tr>
+              <td><b>{{ k.word }}</b></td>
+              <td class="small muted">{{ k.category }}</td>
+              <td><span class="badge {{ 'b-low' if k.polarity == 'positive' else 'b-high' }}">
+                {{ k.polarity }}</span></td>
+              <td class="num">{{ k.weight }}</td>
+              <td class="num">{{ k.occurrences }}</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <div>
+
+    <div class="card">
+      <div class="hd"><h3>Details</h3></div>
+      <div class="bd">
+        <dl class="kv">
+          <dt>Student</dt><dd>{{ a.student_name }}</dd>
+          <dt>Enrollment</dt><dd class="mono tiny">{{ a.enrollment_no }}</dd>
+          <dt>Department</dt><dd>{{ a.dept_name }}</dd>
+          <dt>Year</dt><dd>{{ a.year_of_study }}</dd>
+          <dt>Recorded</dt><dd>{{ a.created_at|dt }}</dd>
+          <dt>Model</dt><dd>{{ a.model_name }}</dd>
+          <dt>Source</dt><dd>{{ a.source }}</dd>
+        </dl>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="hd"><h3>Earlier entries</h3></div>
+      <div class="bd tight table-wrap">
+        <table>
+          <thead><tr><th>When</th><th>Level</th><th class="num">Conf.</th></tr></thead>
+          <tbody>
+          {% for h in history %}
+            <tr {% if h.assessment_id == a.assessment_id %}style="background:var(--brand-soft)"{% endif %}>
+              <td class="small"><a href="{{ url_for('assessments.detail', assessment_id=h.assessment_id) }}">
+                {{ h.created_at|ago }}</a></td>
+              <td>{{ m.level_badge(h.level_name) }}</td>
+              <td class="num small">{{ h.confidence_pct }}%</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+{{ sup.support_panel(support, a.stress_level) }}
+{% endblock %}

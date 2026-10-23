@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% import "_icons.html" as ic %}
+{% import "_town.html" as town %}
+{% block title %}Emergency {{ answered + 1 }} of {{ total }} · MindCare{% endblock %}
+{% block heading %}Emergency {{ answered + 1 }} of {{ total }}{% endblock %}
+{% block subheading %}{{ game.age_group }} level · {{ points }} point{{ '' if points == 1 else 's' }} so far{% endblock %}
+{% block topbar_actions %}
+  <a class="btn" href="{{ url_for('game.index') }}">Take a break</a>
+{% endblock %}
+
+{% block content %}
+<div class="rescue-wrap">
+  <div class="rescue-bar">
+    <div class="play-progress" aria-label="{{ answered }} of {{ total }} emergencies done">
+      {% for n in range(total) %}
+        <span class="{{ 'done' if n < answered else ('now' if n == answered else '') }}"></span>
+      {% endfor %}
+    </div>
+    <div class="timer" data-timer data-seconds="{{ seconds_left }}" data-limit="{{ round.time_limit_sec }}" role="timer" aria-live="off">
+      {{ ic.icon('clock', 15) }}
+      <span class="timer-text">{{ seconds_left }}s</span>
+      <span class="timer-track"><span class="timer-fill" style="width:{{ (seconds_left / round.time_limit_sec * 100)|round(1) }}%"></span></span>
+    </div>
+  </div>
+
+  <form method="post" action="{{ url_for('game.send', game_id=game.game_id) }}" data-rescue>
+    <input type="hidden" name="round_no" value="{{ round.round_no }}">
+    <input type="hidden" name="response_ms" value="">
+    {% call town.town(places, 'play') %}
+      <div class="incident urgency-{{ round.urgency }}" data-drag tabindex="0"
+           aria-label="Emergency: {{ round.title }}. {{ round.story }}">
+        <span class="incident-icon" aria-hidden="true">{{ round.icon }}</span>
+        <div class="incident-copy">
+          <span class="incident-tag">{{ {3: 'Urgent', 2: 'Needs help soon', 1: 'Needs help'}[round.urgency] }}</span>
+          <b>{{ round.title }}</b>
+          <span>{{ round.story }}</span>
+        </div>
+        <span class="incident-hint">{{ ic.icon('menu', 14) }} Drag me to the right place</span>
+      </div>
+    {% endcall %}
+  </form>
+
+  <p class="play-note tiny faint">
+    <span class="js-hint">You can also tap a building, or press 1 to 6 on your keyboard.</span>
+    If the timer runs out, this emergency counts as missed.
+  </p>
+</div>
+{% endblock %}

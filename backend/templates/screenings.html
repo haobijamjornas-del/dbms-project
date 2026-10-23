@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block title %}Screenings · MindCare{% endblock %}
+{% block heading %}{{ 'My reports' if g.user.role == 'student' else 'Full assessments' }}{% endblock %}
+{% block subheading %}{{ rows|length }} record{{ '' if rows|length == 1 else 's' }}{% endblock %}
+{% block topbar_actions %}
+  {% if g.user.role == 'student' %}
+    <a class="btn btn-primary" href="{{ url_for('screening.start') }}">Take a new assessment</a>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="bd tight table-wrap">
+    <table>
+      <thead><tr>
+        {% if g.user.role != 'student' %}<th>Student</th>{% endif %}
+        <th>Completed</th><th class="num">Composite</th><th>Band</th>
+        <th>Text reading</th><th class="num">Items</th><th>Flags</th><th></th>
+      </tr></thead>
+      <tbody>
+      {% for r in rows %}
+        <tr>
+          {% if g.user.role != 'student' %}
+            <td><a href="{{ url_for('students.detail', student_id=r.student_id) }}">
+                  <b>{{ r.student_name }}</b></a>
+                <div class="tiny faint">{{ r.dept_code }} · Year {{ r.year_of_study }}</div></td>
+          {% endif %}
+          <td class="small" style="white-space:nowrap">
+            {% if r.status == 'COMPLETED' %}{{ r.completed_at|dt }}
+              {% if r.is_baseline %}<div class="tiny faint">baseline</div>{% endif %}
+            {% else %}<span class="badge b-moderate">{{ m.status_label(r.status) }}</span>
+              <div class="tiny faint">started {{ r.started_at|ago }}</div>{% endif %}</td>
+          <td class="num">{% if r.composite_score is not none %}
+              <b>{{ r.composite_score }}</b><span class="tiny faint">/100</span>
+            {% else %}<span class="faint">—</span>{% endif %}</td>
+          <td>{{ m.level_badge(r.composite_band) }}</td>
+          <td>{{ m.level_badge(r.text_level) if r.text_level else '—' }}</td>
+          <td class="num small">{{ r.items_answered }}</td>
+          <td>{% if r.critical_flags %}
+              <span class="badge b-critical">{{ r.critical_flags }} critical</span>
+            {% else %}<span class="tiny faint">none</span>{% endif %}</td>
+          <td>
+            {% if r.status == 'COMPLETED' %}
+              <a class="btn btn-sm" href="{{ url_for('screening.result', screening_id=r.screening_id) }}">Report</a>
+            {% else %}
+              <a class="btn btn-sm btn-primary" href="{{ url_for('screening.step', screening_id=r.screening_id, step=1) }}">Resume</a>
+            {% endif %}
+          </td>
+        </tr>
+      {% else %}
+        <tr><td colspan="8" class="empty">
+          No assessments yet.
+          {% if g.user.role == 'student' %}
+            <br><a class="btn btn-primary btn-sm" style="margin-top:10px"
+                   href="{{ url_for('screening.start') }}">Take your first assessment</a>
+          {% endif %}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card">
+  <div class="hd"><h3>Instruments in use</h3></div>
+  <div class="bd tight table-wrap">
+    <table>
+      <thead><tr><th>Code</th><th>Full name</th><th>Measures</th><th>Recall</th>
+        <th class="num">Items</th><th class="num">Range</th>
+        <th class="num">Composite weight</th></tr></thead>
+      <tbody>
+      {% for i in instruments %}
+        <tr>
+          <td><span class="badge b-blue">{{ i.code }}</span></td>
+          <td class="small">{{ i.full_name }}</td>
+          <td class="small">{{ i.measures }}</td>
+          <td class="small muted">{{ i.recall_period }}</td>
+          <td class="num">{{ i.item_count }}</td>
+          <td class="num small">{{ i.score_min }}–{{ i.score_max }}</td>
+          <td class="num">{{ (i.weight * 100)|round|int }}%</td>
+        </tr>
+      {% endfor %}
+      <tr>
+        <td><span class="badge b-grey">TEXT</span></td>
+        <td class="small">Free-text reflection scored by the ML model</td>
+        <td class="small">Overall stress</td>
+        <td class="small muted">Right now</td>
+        <td class="num">1</td><td class="num small">0–2</td>
+        <td class="num">20%</td>
+      </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

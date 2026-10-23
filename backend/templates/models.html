@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block title %}Models · MindCare{% endblock %}
+{% block heading %}Models{% endblock %}
+{% block subheading %}Trained models and how they performed{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="hd"><h3>Registered models</h3><div class="spacer"></div>
+    <span class="tiny faint">trained on {{ meta.train_size }} rows,
+      tested on {{ meta.test_size }}</span></div>
+  <div class="bd tight table-wrap">
+    <table>
+      <thead><tr><th>#</th><th>Algorithm</th><th class="num">Accuracy</th>
+        <th class="num">Macro F1</th><th class="num">Precision</th><th class="num">Recall</th>
+        <th class="num">Features</th><th>State</th><th></th></tr></thead>
+      <tbody>
+      {% for r in rows %}
+        <tr {% if r.is_active %}style="background:var(--brand-soft)"{% endif %}>
+          <td class="mono tiny">{{ r.model_id }}</td>
+          <td><b>{{ r.algorithm }}</b>
+            <div class="tiny faint">{{ r.model_name }} v{{ r.version }}</div></td>
+          <td class="num">{{ (r.accuracy * 100) | round(2) }}%</td>
+          <td class="num"><b>{{ (r.f1_macro * 100) | round(2) }}%</b></td>
+          <td class="num">{{ (r.precision_macro * 100) | round(2) }}%</td>
+          <td class="num">{{ (r.recall_macro * 100) | round(2) }}%</td>
+          <td class="num">{{ r.feature_count }}</td>
+          <td>{% if r.is_active %}<span class="badge b-low">ACTIVE</span>
+              {% else %}<span class="badge b-grey">inactive</span>{% endif %}</td>
+          <td>
+            {% if not r.is_active %}
+              <form method="post" action="{{ url_for('admin.model_activate', model_id=r.model_id) }}">
+                <button class="btn btn-sm" type="submit">Activate</button>
+              </form>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="grid g2">
+  {% if meta.confusion_matrix %}
+  <div class="card">
+    <div class="hd"><h3>Confusion matrix — {{ meta.algorithm }}</h3></div>
+    <div class="bd">
+      <div class="table-wrap"><table>
+        <thead><tr><th>Actual ╲ Predicted</th>
+          <th class="num">Low</th><th class="num">Medium</th><th class="num">High</th>
+          <th class="num">Recall</th></tr></thead>
+        <tbody>
+        {% for row in meta.confusion_matrix %}
+          {% set ri = loop.index0 %}
+          {% set total = row | sum %}
+          <tr>
+            <td><b>{{ ['Low','Medium','High'][ri] }}</b></td>
+            {% for v in row %}
+              <td class="num"
+                  style="background:{{ 'var(--brand-soft)' if loop.index0 == ri else 'transparent' }};
+                         font-weight:{{ '650' if loop.index0 == ri else '400' }}">{{ v }}</td>
+            {% endfor %}
+            <td class="num">{{ ((row[ri] / total * 100) | round(1)) if total else 0 }}%</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table></div>
+      <div class="tiny muted" style="margin-top:11px">
+        The diagonal is correct predictions. Theme classifier accuracy:
+        <b>{{ (meta.theme_accuracy * 100) | round(2) }}%</b> over 13 classes.
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="card">
+    <div class="hd"><h3>Predictions served</h3></div>
+    <div class="bd">
+      {% set ub = [] %}
+      {% for u in usage %}
+        {% set _ = ub.append((u.algorithm, u.predictions, 'var(--brand)')) %}
+      {% endfor %}
+      {{ m.bar_chart(ub) }}
+
+      <h4 style="margin-top:20px" class="muted tiny">Training and test split</h4>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Level</th><th>Split</th><th class="num">Rows</th></tr></thead>
+        <tbody>
+        {% for c in corpus_stats %}
+          <tr><td>{{ m.level_badge(c.level_name) }}</td>
+            <td><span class="badge b-grey">{{ c.split }}</span></td>
+            <td class="num">{{ c.n }}</td></tr>
+        {% endfor %}
+        </tbody>
+      </table></div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="hd"><h3>Pipeline</h3></div>
+  <div class="bd small">
+    <dl class="kv">
+      <dt>Cleaning</dt><dd>lowercase → URL/email strip → contraction expansion →
+        filler-word removal ("ngl", "tbh", "lowkey" …) → non-alphabetic strip</dd>
+      <dt>Features</dt><dd>TF-IDF, 1–2 grams, sublinear term frequency,
+        min_df = 2, max_df = 0.9 → {{ meta.feature_count }} features</dd>
+      <dt>Split</dt><dd>80:20 stratified, random_state = 42</dd>
+      <dt>Selection</dt><dd>four algorithms compared, highest macro F1 wins</dd>
+      <dt>Safety layer</dt><dd>regex crisis detection can override the classifier upward
+        to High — a statistical model must never be the only guard on explicit
+        self-harm language</dd>
+    </dl>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}{{ instrument.code }} · MindCare{% endblock %}
+{% block heading %}{{ instrument.full_name }}{% endblock %}
+{% block subheading %}Step {{ step }} of {{ total_steps }} ·
+  {{ instrument.item_count }} questions{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="bd" style="padding-bottom:10px">
+    <div style="display:flex; align-items:center; gap:12px; margin-bottom:8px">
+      <span class="badge b-blue">{{ instrument.code }}</span>
+      <span class="small muted">{{ answered }} of {{ total_items }} answered</span>
+      <span style="flex:1"></span>
+      <span class="tiny faint">{{ instrument.measures }} · {{ instrument.recall_period }}</span>
+    </div>
+    <div class="bar-track" style="height:6px">
+      <div class="bar-fill" style="width:{{ (answered / total_items * 100) if total_items else 0 }}%;
+           background:var(--brand)"></div>
+    </div>
+  </div>
+</div>
+
+<form method="post">
+  <div class="card">
+    <div class="hd">
+      <h3>{{ instrument.recall_period }}, how often have you been bothered by
+        the following?</h3>
+    </div>
+    <div class="bd tight">
+      {% for item in items %}
+        <div style="padding:15px 16px; border-bottom:1px solid var(--border)">
+          <div style="display:flex; gap:11px; align-items:flex-start; margin-bottom:11px">
+            <span class="tiny faint mono" style="padding-top:2px; min-width:22px">
+              {{ item.item_no }}.</span>
+            <div style="flex:1">
+              <div style="font-size:.92rem; line-height:1.5">{{ item.question_text }}</div>
+              {% if item.is_critical %}
+                <div class="tiny" style="color:var(--high); margin-top:5px">
+                  If this is true for you, please tell someone today — the numbers
+                  below are not a substitute for that.</div>
+              {% endif %}
+            </div>
+          </div>
+          <div style="display:flex; gap:7px; flex-wrap:wrap; padding-left:33px">
+            {% for o in options %}
+              <label style="flex:1; min-width:118px; margin:0; cursor:pointer;
+                            font-weight:400; color:var(--text)">
+                <input type="radio" name="item_{{ item.item_id }}"
+                       value="{{ o.option_value }}" required
+                       style="width:auto; margin-right:6px"
+                       {{ 'checked' if saved.get(item.item_id) == o.option_value }}>
+                <span class="small">{{ o.option_label }}</span>
+              </label>
+            {% endfor %}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div style="display:flex; gap:10px; align-items:center">
+    {% if step > 1 %}
+      <a class="btn" href="{{ url_for('screening.step', screening_id=scr.screening_id,
+                                      step=step - 1) }}">← Back</a>
+    {% endif %}
+    <span style="flex:1"></span>
+    <span class="tiny faint">Answers are saved when you continue</span>
+    <button class="btn btn-primary" type="submit">
+      {% if step < total_steps %}Save and continue →{% else %}Continue{% endif %}</button>
+  </div>
+</form>
+{% endblock %}

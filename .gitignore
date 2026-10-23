@@ -1,0 +1,9 @@
+venv/
+__pycache__/
+*.pyc
+mindcare.db
+mindcare.db-journal
+backups/
+.DS_Store
+.claude/
+.vscode/

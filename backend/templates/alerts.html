@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block title %}Alerts · MindCare{% endblock %}
+{% block heading %}Alerts{% endblock %}
+{% block subheading %}Students whose latest entry needs a follow-up{% endblock %}
+
+{% block content %}
+<div id="alerts-table" class="datatable">
+<div class="card">
+  <div class="loading-bar"></div>
+  <div class="bd">
+    <div class="tabs" style="margin-bottom:12px">
+      {% for st in ['OPEN','ACKNOWLEDGED','RESOLVED','DISMISSED','ALL'] %}
+        <a href="{{ url_for('alerts.index', status=st, priority=priority) }}"
+           class="{{ 'active' if status == st }}">
+          {{ st|title }}
+          {% if counts.get(st) %}<span class="faint">({{ counts.get(st) }})</span>{% endif %}
+        </a>
+      {% endfor %}
+    </div>
+    <form method="get" class="filters">
+      <input type="hidden" name="status" value="{{ status }}">
+      <div class="field">
+        <label>Priority</label>
+        <select name="priority" data-filter="priority" data-autosubmit>
+          <option value="">All priorities</option>
+          {% for p in ['CRITICAL','HIGH','MEDIUM','LOW'] %}
+            <option value="{{ p }}" {{ 'selected' if priority == p }}>{{ p }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% if g.user.counsellor_id %}
+        <div class="field">
+          <label>Scope</label>
+          <select name="mine" data-filter="mine" data-autosubmit>
+            <option value="">All counsellors</option>
+            <option value="1" {{ 'selected' if mine }}>Assigned to me</option>
+          </select>
+        </div>
+      {% endif %}
+      <div class="field no-js-only"><button class="btn" type="submit">Apply</button></div>
+      <div class="field js-only" style="flex:0 0 auto; align-self:flex-end">
+        <span class="tiny faint" data-role="count">{{ total }} records</span>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="bd tight table-wrap">
+    <table>
+      <thead><tr>
+        <th>Priority</th><th>Student</th><th>Entry</th><th>Theme</th>
+        <th class="num">Conf.</th><th>Assigned</th><th>Raised</th>
+        <th>Status</th><th>Action</th>
+      </tr></thead>
+      <tbody>
+      {% for a in rows %}
+        <tr>
+          <td>{{ m.priority_badge(a.priority) }}
+            {% if a.alert_type != 'HIGH_STRESS' %}
+              <div class="tiny faint" style="margin-top:3px">
+                {{ m.alert_label(a.alert_type) }}</div>{% endif %}</td>
+          <td><a href="{{ url_for('students.detail', student_id=a.student_id) }}">
+                <b>{{ a.student_name }}</b></a>
+              <div class="tiny faint">{{ a.dept_code }} · {{ a.phone or 'no phone' }}</div></td>
+          <td class="small" style="max-width:280px">
+            <a href="{{ url_for('assessments.detail', assessment_id=a.assessment_id) }}"
+               style="color:var(--text)">{{ a.entry_text|truncate(85) }}</a></td>
+          <td class="small">{{ a.theme_name or '—' }}</td>
+          <td class="num small">{{ a.confidence_pct }}%</td>
+          <td class="small">{{ a.assigned_counsellor or '—' }}</td>
+          <td class="small muted" style="white-space:nowrap">{{ a.raised_at|ago }}</td>
+          <td data-role="status">{{ m.status_badge(a.status) }}</td>
+          <td>
+            <form method="post" action="{{ url_for('alerts.update', alert_id=a.alert_id) }}"
+                  data-api="/alerts/{{ a.alert_id }}"
+                  data-current-filter="{{ status }}"
+                  data-message="Alert #{{ a.alert_id }} set to {status}."
+                  style="display:flex; gap:5px">
+              <select name="status" style="width:auto; padding:4px 7px; font-size:.78rem">
+                <option value="">Set…</option>
+                <option value="ACKNOWLEDGED">Acknowledge</option>
+                <option value="RESOLVED">Resolve</option>
+                <option value="DISMISSED">Dismiss</option>
+                <option value="OPEN">Reopen</option>
+              </select>
+              <button class="btn btn-sm btn-primary" type="submit">Go</button>
+            </form>
+          </td>
+        </tr>
+      {% else %}
+        <tr><td colspan="9" class="empty">Nothing in this queue.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+  <div class="pager js-only" data-role="pager"></div>
+</div>
+{% endblock %}

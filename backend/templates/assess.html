@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}How are you feeling? · MindCare{% endblock %}
+{% block heading %}{% if students %}New entry{% else %}How are you feeling?{% endif %}{% endblock %}
+{% block subheading %}{% if students %}Record a student's words and let the model
+  read them{% else %}Write it in your own words — the stress level appears as you
+  type{% endif %}{% endblock %}
+
+{% block content %}
+<div id="live-check" class="grid g23">
+  <div>
+    <div class="card entry-card">
+      <div class="bd">
+        <form method="post">
+          {% if students %}
+            <div class="field">
+              <label for="student_id">Which student is this for?</label>
+              <select name="student_id" id="student_id" required>
+                <option value="">— select a student —</option>
+                {% for s in students %}
+                  <option value="{{ s.student_id }}">{{ s.full_name }} ({{ s.enrollment_no }})</option>
+                {% endfor %}
+              </select>
+            </div>
+          {% endif %}
+
+          <div class="field">
+            <label for="entry_text" class="entry-label">
+              {% if students %}What did they say?{% else %}Tell me about your week{% endif %}
+            </label>
+            <textarea name="entry_text" id="entry_text" required minlength="10"
+              data-role="entry-text" class="entry-box" autofocus
+              placeholder="There is no right way to write this. For example:&#10;&#10;“I haven't been able to sleep before 3am all week. Assignments keep piling up and I've started avoiding my friends because I don't have the energy to explain.”"
+            >{{ entry_text }}</textarea>
+            <div class="entry-meta">
+              <span class="tiny faint" data-role="char-count">0 characters</span>
+              <span class="tiny faint js-only">⌘/Ctrl + Enter to save</span>
+            </div>
+          </div>
+
+          <div class="entry-actions">
+            <select name="source" id="source" aria-label="Captured via"
+                    style="width:auto; min-width:150px">
+              <option value="web">Web portal</option>
+              <option value="mobile">Mobile app</option>
+              <option value="chat">Chat assistant</option>
+            </select>
+            <span style="flex:1"></span>
+            <button class="btn btn-primary btn-lg" type="submit" data-role="submit">
+              Save this entry</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="card no-js-only">
+      <div class="bd small muted">
+        Press <b>Save this entry</b> and the model will classify it as
+        <b>Low</b>, <b>Medium</b> or <b>High</b> stress on the next page.
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="live-panel js-only">
+      <div class="live-panel-hd">
+        <span>Reading your words</span>
+        <span class="live-dot"></span>
+      </div>
+      <div class="live-result is-idle" data-role="live-result" aria-live="polite">
+        <div class="live-hint">Start writing and your stress level will appear here.</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="hd"><h3>What the levels mean</h3></div>
+      <div class="bd">
+        <div class="level-key">
+          <div class="level-key-row">
+            <span class="badge b-low">Low</span>
+            <span class="small muted">Language reads as settled. Routine check-ins only.</span>
+          </div>
+          <div class="level-key-row">
+            <span class="badge b-medium">Medium</span>
+            <span class="small muted">Early warning signs. Self-help resources and a re-check soon.</span>
+          </div>
+          <div class="level-key-row">
+            <span class="badge b-high">High</span>
+            <span class="small muted">Strong distress signals. A counsellor is notified automatically.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="hd"><h3>Your privacy</h3></div>
+      <div class="bd small muted">
+        What you write is visible only to you and campus counselling staff.
+        MindCare is a <b>screening aid, not a diagnosis</b>.
+        <div style="margin-top:9px">
+          In distress right now? <b>Tele-MANAS 14416</b> — free, 24×7.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

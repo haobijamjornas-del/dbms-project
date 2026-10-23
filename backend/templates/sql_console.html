@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}SQL console · MindCare{% endblock %}
+{% block heading %}SQL console{% endblock %}
+{% block subheading %}Read-only connection — SELECT, WITH and EXPLAIN only{% endblock %}
+
+{% block content %}
+<div class="grid g23">
+  <div>
+    <div class="card">
+      <div class="hd"><h3>Query</h3><div class="spacer"></div>
+        {% if elapsed is not none %}
+          <span class="tiny faint">{{ rows|length }} row{{ '' if rows|length == 1 else 's' }}
+            in {{ elapsed }} ms</span>
+        {% endif %}
+      </div>
+      <div class="bd">
+        <form method="post">
+          <textarea name="sql" spellcheck="false"
+            style="font-family:var(--mono); font-size:.83rem; min-height:170px"
+            placeholder="SELECT * FROM v_student_risk_profile ORDER BY risk_index DESC LIMIT 10;">{{ sql }}</textarea>
+          <div style="display:flex; gap:9px; margin-top:11px; align-items:center">
+            <button class="btn btn-primary" type="submit">Run query</button>
+            <a class="btn" href="{{ url_for('admin.sql_console') }}">Clear</a>
+            <span class="tiny faint" style="margin-left:auto">results capped at 200 rows</span>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    {% if error %}
+      <div class="flash flash-danger"><b>Error:</b>&nbsp;{{ error }}</div>
+    {% endif %}
+
+    {% if cols %}
+      <div class="card">
+        <div class="hd"><h3>Result</h3>
+          {% if truncated %}<div class="spacer"></div>
+            <span class="badge b-moderate">truncated at 200 rows</span>{% endif %}</div>
+        <div class="bd tight table-wrap">
+          <table>
+            <thead><tr>{% for c in cols %}<th>{{ c }}</th>{% endfor %}</tr></thead>
+            <tbody>
+            {% for r in rows %}
+              <tr>{% for v in r %}
+                <td class="small{{ ' num mono' if v is number else '' }}">
+                  {{ '—' if v is none else v }}</td>
+              {% endfor %}</tr>
+            {% else %}
+              <tr><td colspan="{{ cols|length }}" class="empty">Query returned no rows.</td></tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+
+  <div>
+    <div class="card">
+      <div class="hd"><h3>Sample queries</h3><div class="spacer"></div>
+        <span class="tiny faint">click to load</span></div>
+      <div class="bd" style="max-height:640px; overflow-y:auto">
+        {% for title, q in samples %}
+          <form method="post" style="margin-bottom:9px">
+            <input type="hidden" name="sql" value="{{ q }}">
+            <button type="submit" class="btn btn-sm"
+                    style="width:100%; text-align:left; justify-content:flex-start;
+                           white-space:normal; line-height:1.4">
+              {{ loop.index }}. {{ title }}</button>
+          </form>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="hd"><h3>Safety</h3></div>
+      <div class="bd small muted">Read-only. Only SELECT, WITH and EXPLAIN run here — try <span class="mono">DROP TABLE student;</span> and it is refused.</div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+{% import "_icons.html" as ic %}
+{% set a = attempt %}
+{% set is_student = g.user.role == 'student' %}
+{% block title %}Puzzle results · MindCare{% endblock %}
+{% block heading %}{% if is_student %}Your puzzle results{% else %}Puzzle results · {{ a.student_name }}{% endif %}{% endblock %}
+{% block subheading %}{{ a.age_group }} level{% if a.age_at_attempt %} · age {{ a.age_at_attempt }}{% endif %} · {{ a.completed_at|dt }}{% endblock %}
+{% block topbar_actions %}
+  {% if is_student %}
+    <a class="btn" href="{{ url_for('puzzles.index') }}">All results</a>
+    <form method="post" action="{{ url_for('puzzles.start') }}" style="display:contents">
+      <button class="btn btn-primary" type="submit">{{ ic.icon('puzzle', 16) }} Try a new set</button>
+    </form>
+  {% else %}
+    <a class="btn" href="{{ url_for('students.detail', student_id=a.student_id) }}">Student profile</a>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+{% set pct = a.accuracy_pct or 0 %}
+<div class="card result-hero">
+  <div class="bd">
+    <div class="ring" style="--pct:{{ pct }}; --ring:{{ a.band_color }}">
+      <div class="ring-inner"><b>{{ pct|round|int }}%</b><span>correct</span></div>
+    </div>
+    <div class="result-copy">
+      <span class="result-band" style="color:{{ a.band_color }}; background:{{ a.band_color }}14; border-color:{{ a.band_color }}40">{{ a.band }}</span>
+      <h2>{% if is_student %}{{ a.band_message }}{% else %}{{ a.student_name|firstname }} scored {{ a.correct_items }} out of {{ a.total_items }}.{% endif %}</h2>
+      <div class="result-facts">
+        <span>{{ ic.icon('check', 15) }} <b>{{ a.correct_items }}</b> of {{ a.total_items }} correct</span>
+        <span>{{ ic.icon('clock', 15) }} <b>{{ ((a.avg_response_ms or 0) / 1000)|round(1) }} s</b> per puzzle</span>
+        {% if a.minutes_taken %}<span>{{ ic.icon('history', 15) }} <b>{{ a.minutes_taken }} min</b> in total</span>{% endif %}
+        {% if previous %}
+          {% set diff = (pct - (previous.accuracy_pct or 0))|round|int %}
+          <span class="{{ 'up' if diff > 0 else ('down' if diff < 0 else '') }}">{{ ic.icon('trend', 15) }}
+            {% if diff > 0 %}<b>{{ diff }} points</b> higher than last time
+            {% elif diff < 0 %}<b>{{ -diff }} points</b> lower than last time
+            {% else %}Same as last time{% endif %}</span>
+        {% else %}
+          <span>{{ ic.icon('star', 15) }} First puzzle set</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="grid g23">
+  <div>
+    <div class="card">
+      <div class="hd"><h3>How {{ 'you' if is_student else 'they' }} did in each area</h3></div>
+      <div class="bd">
+        {% for s in scores %}
+          {% set tone = 'var(--low)' if s.accuracy_pct >= 60 else ('var(--moderate)' if s.accuracy_pct >= 34 else '#D9774A') %}
+          <div class="area-row">
+            <div class="area-name"><b>{{ s.category }}</b><span class="tiny faint">{{ s.skill }}</span></div>
+            <div class="area-bar">
+              <div class="bar-track" style="height:10px"><div class="bar-fill" style="width:{{ s.accuracy_pct }}%; background:{{ tone }}"></div></div>
+            </div>
+            <div class="area-score"><b>{{ s.correct }}/{{ s.puzzles }}</b>
+              <span class="tiny faint">{{ ((s.avg_response_ms or 0) / 1000)|round(1) }} s avg</span></div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="hd"><h3>Go through the answers</h3><div class="spacer"></div>
+        <span class="tiny faint">tap a puzzle to see the explanation</span></div>
+      <div class="bd tight">
+        {% for r in review %}
+          <details class="review">
+            <summary>
+              <span class="review-mark {{ 'ok' if r.is_correct else ('skip' if r.selected_option_id is none else 'no') }}">
+                {% if r.is_correct %}{{ ic.icon('check', 14) }}{% elif r.selected_option_id is none %}–{% else %}{{ ic.icon('close', 14) }}{% endif %}
+              </span>
+              <span class="review-title"><span class="tiny faint">{{ r.position }} · {{ r.category }}</span>
+                <span class="small">{{ r.prompt|truncate(70) }}</span></span>
+              <span class="tiny faint review-time">{{ ((r.response_ms or 0) / 1000)|round(1) }} s</span>
+            </summary>
+            <div class="review-body small">
+              {% set v = visuals.get(r.puzzle_id) %}
+              {% if v %}
+                <div class="review-visual">
+                  {% for e in v.WORD %}
+                    <span class="review-word" style="color:{{ swatch(e.color_key) }}">{{ e.text_value }}</span>
+                  {% endfor %}
+                  {% if v.KEY %}
+                    <span class="review-key">
+                      {% for e in v.KEY %}<span><span class="swatch swatch-xs" style="background:{{ swatch(e.color_key) }}"></span>{{ e.text_value }}</span>{% endfor %}
+                    </span>
+                  {% endif %}
+                  {% for e in v.SEQUENCE %}
+                    {% if r.category_code == 'CODE' and e.text_value %}<span class="review-join">{{ e.text_value }}</span>{% endif %}
+                    {% if e.color_key %}<span class="swatch swatch-mini" style="background:{{ swatch(e.color_key) }}"></span>
+                    {% else %}<span class="review-num {{ 'is-q' if e.text_value == '?' }}">{{ e.text_value }}</span>{% endif %}
+                  {% endfor %}
+                </div>
+              {% endif %}
+              <div class="review-answers">
+                <span><span class="faint">{{ 'Your' if is_student else 'Their' }} answer</span>
+                  {% if r.selected_option_id is none %}<b>Skipped or ran out of time</b>
+                  {% else %}{% if r.chosen_color %}<span class="swatch swatch-xs" style="background:{{ swatch(r.chosen_color) }}"></span>{% endif %}<b>{{ r.chosen_label }}</b>{% endif %}</span>
+                <span><span class="faint">Correct answer</span>
+                  {% if r.correct_color %}<span class="swatch swatch-xs" style="background:{{ swatch(r.correct_color) }}"></span>{% endif %}<b>{{ r.correct_label }}</b></span>
+              </div>
+              {% if r.selected_option_id is not none and not r.is_correct and r.chosen_label == r.correct_label %}
+                <p class="tiny muted">Right answer, but it came after the time limit.</p>
+              {% endif %}
+              <p class="muted" style="margin:0">{{ r.explanation }}</p>
+            </div>
+          </details>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <div>
+    {% if strengths %}
+    <div class="card">
+      <div class="hd"><h3>What went well</h3></div>
+      <div class="bd">
+        <div class="tip-list">
+          {% for s in strengths %}
+            <div class="tip tip-good"><b>{{ s.category }}</b><span class="small muted">{{ s.note }}</span></div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if practice %}
+    <div class="card">
+      <div class="hd"><h3>Worth practising</h3></div>
+      <div class="bd">
+        <div class="tip-list">
+          {% for s in practice %}
+            <div class="tip"><b>{{ s.category }}</b><span class="small muted">{{ s.tip }}</span></div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="card counsel-card">
+      <div class="hd">{{ ic.icon('heart', 17) }}<h3>{{ 'Looking after your focus' if is_student else 'For the counselling conversation' }}</h3></div>
+      <div class="bd small">
+        {% if is_student %}
+          <p>Focus and memory are closely tied to how we feel. When we are stressed, low
+            or short on sleep, puzzles like these genuinely feel harder.</p>
+          {% if latest_level == 'High' %}
+            <p class="counsel-flag">Your most recent entry showed high stress. If today's puzzles
+              felt tough, that is completely understandable. Talking it through can help.</p>
+          {% elif pct < 50 %}
+            <p class="counsel-flag">If this felt harder than usual, it may be worth noticing how
+              you have been sleeping and how much is on your mind at the moment.</p>
+          {% endif %}
+          <div class="counsel-actions">
+            <a class="btn btn-sm btn-primary" href="{{ url_for('assessments.create') }}">Write how you feel</a>
+            <a class="btn btn-sm" href="{{ url_for('wellness.index') }}">Log your sleep</a>
+          </div>
+          <p class="tiny muted" style="margin:12px 0 0">Need to talk now? Tele-MANAS <b>14416</b> is free, any time.</p>
+        {% else %}
+          <p>Use this as a conversation starter, not an assessment of ability.</p>
+          <ul class="counsel-list">
+            <li>Latest stress reading: <b>{{ latest_level or 'no entries yet' }}</b></li>
+            <li>Slowest area: <b>{{ (scores|sort(attribute='avg_response_ms')|last).category if scores else '—' }}</b></li>
+            {% if practice %}<li>Found hardest: <b>{{ practice|map(attribute='category')|join(', ') }}</b></li>{% endif %}
+          </ul>
+          <p class="muted" style="margin:0">A sudden drop in attention or memory scores can go
+            with poor sleep, anxiety or low mood, so it may be worth asking gently about those.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if history|length > 1 %}
+    <div class="card">
+      <div class="hd"><h3>Over time</h3></div>
+      <div class="bd">
+        <div class="history-bars">
+          {% for h in history %}
+            <a class="history-bar {{ 'is-current' if h.attempt_id == a.attempt_id }}"
+               href="{{ url_for('puzzles.result', attempt_id=h.attempt_id) }}"
+               title="{{ h.completed_at|dt('%d %b') }}: {{ h.accuracy_pct }}%">
+              <span class="history-fill" style="height:{{ [h.accuracy_pct or 0, 4]|max }}%; background:{{ h.band_color }}"></span>
+              <span class="tiny faint">{{ h.completed_at|dt('%d %b') }}</span>
+            </a>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <p class="tiny faint" style="padding:0 4px">These puzzles are a wellbeing activity, not an IQ test
+      or a diagnosis. Results can change a lot from day to day.</p>
+  </div>
+</div>
+{% endblock %}

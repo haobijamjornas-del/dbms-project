@@ -1,0 +1,60 @@
+{
+  "model_name": "MindCare Stress Classifier",
+  "algorithm": "Logistic Regression",
+  "version": "1.0",
+  "accuracy": 0.996,
+  "precision_macro": 0.996002,
+  "recall_macro": 0.995996,
+  "f1_macro": 0.995994,
+  "train_size": 4000,
+  "test_size": 1000,
+  "feature_count": 6816,
+  "theme_accuracy": 0.989,
+  "confusion_matrix": [
+    [
+      332,
+      1,
+      0
+    ],
+    [
+      2,
+      330,
+      1
+    ],
+    [
+      0,
+      0,
+      334
+    ]
+  ],
+  "comparison": {
+    "Logistic Regression": {
+      "accuracy": 0.996,
+      "f1_macro": 0.995994,
+      "precision_macro": 0.996002,
+      "recall_macro": 0.995996,
+      "train_seconds": 0.118757
+    },
+    "Multinomial Naive Bayes": {
+      "accuracy": 0.985,
+      "f1_macro": 0.984984,
+      "precision_macro": 0.985062,
+      "recall_macro": 0.984988,
+      "train_seconds": 0.001745
+    },
+    "Linear SVM": {
+      "accuracy": 0.996,
+      "f1_macro": 0.995993,
+      "precision_macro": 0.996026,
+      "recall_macro": 0.995996,
+      "train_seconds": 0.061229
+    },
+    "Random Forest": {
+      "accuracy": 0.964,
+      "f1_macro": 0.963848,
+      "precision_macro": 0.964374,
+      "recall_macro": 0.963979,
+      "train_seconds": 0.455202
+    }
+  }
+}

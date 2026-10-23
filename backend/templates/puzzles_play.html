@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% import "_icons.html" as ic %}
+{% block title %}Puzzle {{ answered + 1 }} of {{ total }} · MindCare{% endblock %}
+{% block heading %}Puzzle {{ answered + 1 }} of {{ total }}{% endblock %}
+{% block subheading %}{{ attempt.age_group }} level · your answers are saved as you go{% endblock %}
+{% block topbar_actions %}
+  <a class="btn" href="{{ url_for('puzzles.index') }}">Take a break</a>
+{% endblock %}
+
+{% block content %}
+<div class="play-wrap">
+  <div class="play-progress" aria-label="{{ answered }} of {{ total }} puzzles done">
+    {% for n in range(total) %}
+      <span class="{{ 'done' if n < answered else ('now' if n == answered else '') }}"></span>
+    {% endfor %}
+  </div>
+
+  <div class="card play-card">
+    <div class="play-head">
+      <span class="play-kind">{{ ic.icon('puzzle', 15) }} {{ item.category }}</span>
+      <span class="tiny faint">{{ item.skill }}</span>
+      <span class="spacer"></span>
+      <div class="timer" data-timer data-seconds="{{ seconds_left }}" data-limit="{{ item.time_limit_sec }}"
+           role="timer" aria-live="off">
+        {{ ic.icon('clock', 15) }}
+        <span class="timer-text">{{ seconds_left }}s</span>
+        <span class="timer-track"><span class="timer-fill" style="width:{{ (seconds_left / item.time_limit_sec * 100)|round(1) }}%"></span></span>
+      </div>
+    </div>
+
+    <div class="play-body">
+      <p class="play-instructions">{{ item.instructions }}</p>
+      <h2 class="play-prompt">{{ item.prompt }}</h2>
+
+      {% if item.category_code == 'STROOP' and word %}
+        <div class="stroop-word" style="color:{{ swatch(word.color_key) }}">{{ word.text_value }}</div>
+
+      {% elif item.category_code == 'NUMBER' %}
+        <div class="seq">
+          {% for e in sequence %}
+            <span class="seq-num {{ 'seq-q' if e.text_value == '?' }}">{{ e.text_value }}</span>
+          {% endfor %}
+        </div>
+
+      {% elif item.category_code == 'PATTERN' %}
+        <div class="seq">
+          {% for e in sequence %}
+            {% if e.color_key %}
+              <span class="swatch" style="background:{{ swatch(e.color_key) }}" aria-label="{{ e.color_key }}"></span>
+            {% else %}
+              <span class="swatch swatch-q" aria-label="missing colour">?</span>
+            {% endif %}
+          {% endfor %}
+        </div>
+
+      {% elif item.category_code == 'CODE' %}
+        <div class="code-key" aria-label="Colour key">
+          {% for e in key %}
+            <span class="code-key-item">
+              <span class="swatch swatch-sm" style="background:{{ swatch(e.color_key) }}"></span>
+              <span class="code-key-label">{{ e.color_key|capitalize }}</span>
+              <b>= {{ e.text_value }}</b>
+            </span>
+          {% endfor %}
+        </div>
+        <div class="seq">
+          {% for e in sequence %}
+            {% if e.text_value %}<span class="seq-join">{{ e.text_value }}</span>{% endif %}
+            <span class="swatch" style="background:{{ swatch(e.color_key) }}" aria-label="{{ e.color_key }}"></span>
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      <form method="post" action="{{ url_for('puzzles.answer', attempt_id=attempt.attempt_id) }}"
+            class="play-form" data-puzzle>
+        <input type="hidden" name="position" value="{{ item.position }}">
+        <input type="hidden" name="response_ms" value="">
+        <div class="options {{ 'options-2' if options|length == 4 else '' }}">
+          {% for o in options %}
+            <button type="submit" class="opt" name="option_id" value="{{ o.option_id }}">
+              <span class="opt-key">{{ loop.index }}</span>
+              {% if o.color_key %}<span class="swatch swatch-sm" style="background:{{ swatch(o.color_key) }}"></span>{% endif %}
+              <span class="opt-label">{{ o.label }}</span>
+            </button>
+          {% endfor %}
+        </div>
+        <div class="play-foot">
+          <span class="tiny faint js-only-inline">Tip: press 1–{{ options|length }} on your keyboard to answer.</span>
+          <span class="spacer"></span>
+          <button type="submit" class="btn btn-sm play-skip" name="option_id" value="">
+            {{ ic.icon('skip', 14) }} Skip this one</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <p class="play-note tiny faint">If the timer runs out, we will move on to the next puzzle for you.</p>
+</div>
+{% endblock %}

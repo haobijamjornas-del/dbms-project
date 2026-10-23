@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% import "_icons.html" as ic %}
+{% import "_town.html" as town %}
+{% set d = detail %}
+{% block title %}Emergency {{ d.round_no }} of {{ total }} · MindCare{% endblock %}
+{% block heading %}Emergency {{ d.round_no }} of {{ total }}{% endblock %}
+{% block subheading %}{{ game.age_group }} level · {{ points }} point{{ '' if points == 1 else 's' }} so far{% endblock %}
+
+{% block content %}
+<div class="rescue-wrap">
+  <div class="rescue-bar">
+    <div class="play-progress" aria-label="{{ answered }} of {{ total }} emergencies done">
+      {% for n in range(total) %}
+        <span class="{{ 'done' if n < answered else '' }}"></span>
+      {% endfor %}
+    </div>
+  </div>
+
+  {% call town.town(places, 'feedback', d.correct_place_id, d.chosen_place_id if not d.is_correct else None) %}
+    <div class="verdict {{ 'is-right' if d.is_correct else 'is-wrong' }}" role="status">
+      <div class="verdict-head">
+        <span class="verdict-icon" aria-hidden="true">{{ d.icon }}</span>
+        <div>
+          <span class="verdict-title">
+            {% if d.is_correct %}{{ ic.icon('check', 18) }} Right! +{{ d.points }} points
+            {% elif d.chosen_place_id is none %}{{ ic.icon('clock', 18) }} Time ran out
+            {% elif d.chosen_place == d.correct_place %}{{ ic.icon('clock', 18) }} Right place, but too late
+            {% else %}{{ ic.icon('close', 18) }} Not quite{% endif %}
+          </span>
+          <b>{{ d.title }}</b>
+        </div>
+      </div>
+      <p>{% if not d.is_correct %}The best place was <b>{{ d.correct_place }}</b>.
+        {% if d.chosen_place and d.chosen_place != d.correct_place %}You chose {{ d.chosen_place }}.{% endif %}
+        {% endif %}{{ d.explanation }}</p>
+      <div class="verdict-actions">
+        {% if g.user.role == 'student' and not is_last %}
+          <a class="btn btn-primary" href="{{ url_for('game.play', game_id=game.game_id) }}" autofocus>
+            Next emergency {{ ic.icon('chevron', 16) }}</a>
+        {% else %}
+          <a class="btn btn-primary" href="{{ url_for('game.result', game_id=game.game_id) }}" autofocus>
+            See my results {{ ic.icon('chevron', 16) }}</a>
+        {% endif %}
+      </div>
+    </div>
+  {% endcall %}
+</div>
+{% endblock %}

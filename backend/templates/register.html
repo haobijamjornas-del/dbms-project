@@ -1,0 +1,121 @@
+{% extends "auth_base.html" %}
+{% block title %}Create account · MindCare{% endblock %}
+{% block card_class %}wide{% endblock %}
+
+{% block form %}
+<h1>Create an account</h1>
+<p class="auth-sub">It takes about a minute. You can sign in straight after.</p>
+
+<form method="post">
+  <div class="row">
+    <div class="field">
+      <label for="full_name">Full name</label>
+      <input type="text" id="full_name" name="full_name" required autocomplete="name"
+             value="{{ form.full_name or '' }}" autofocus>
+    </div>
+    <div class="field">
+      <label for="enrollment_no">Enrollment number</label>
+      <input type="text" id="enrollment_no" name="enrollment_no" required
+             value="{{ form.enrollment_no or '' }}" placeholder="e.g. A2305224080">
+    </div>
+  </div>
+
+  <div class="field">
+    <label for="email">Email</label>
+    <input type="email" id="email" name="email" required autocomplete="email"
+           value="{{ form.email or '' }}" placeholder="you@example.com">
+  </div>
+
+  <div class="row">
+    <div class="field">
+      <label for="dept_id">Department</label>
+      <select id="dept_id" name="dept_id" required>
+        <option value="">Choose your department</option>
+        {% for d in departments %}
+          <option value="{{ d.dept_id }}" {{ 'selected' if form.dept_id == d.dept_id|string }}>{{ d.dept_name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field auth-narrow">
+      <label for="year_of_study">Year</label>
+      <select id="year_of_study" name="year_of_study" required>
+        {% for y in [1, 2, 3, 4, 5] %}
+          <option value="{{ y }}" {{ 'selected' if form.year_of_study == y|string }}>Year {{ y }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+
+  <div class="field">
+    <label for="username">Username</label>
+    <input type="text" id="username" name="username" required minlength="3"
+           autocomplete="username" value="{{ form.username or '' }}">
+    <div class="field-hint">You will use this to sign in.</div>
+  </div>
+
+  <div class="row">
+    <div class="field">
+      <label for="password">Password</label>
+      <div class="pw-wrap">
+        <input type="password" id="password" name="password" required minlength="6"
+               autocomplete="new-password">
+        <button type="button" class="pw-toggle" data-toggle-password="password"
+                aria-label="Show password" aria-pressed="false" hidden>Show</button>
+      </div>
+      <div class="field-hint" data-hint="length">At least 6 characters</div>
+    </div>
+    <div class="field">
+      <label for="confirm_password">Confirm password</label>
+      <div class="pw-wrap">
+        <input type="password" id="confirm_password" name="confirm_password" required
+               autocomplete="new-password">
+        <button type="button" class="pw-toggle" data-toggle-password="confirm_password"
+                aria-label="Show password" aria-pressed="false" hidden>Show</button>
+      </div>
+      <div class="field-hint" data-hint="match"></div>
+    </div>
+  </div>
+
+  <details class="auth-optional" {% if form.phone or form.gender or form.dob or form.hostel_status == 'Hosteller' %}open{% endif %}>
+    <summary>Add a few more details <span>(optional)</span></summary>
+    <div class="row">
+      <div class="field">
+        <label for="phone">Phone</label>
+        <input type="tel" id="phone" name="phone" autocomplete="tel" inputmode="tel"
+               value="{{ form.phone or '' }}">
+      </div>
+      <div class="field">
+        <label for="gender">Gender</label>
+        <select id="gender" name="gender">
+          <option value="">Prefer not to say</option>
+          {% for g in ['Female', 'Male', 'Other'] %}
+            <option value="{{ g }}" {{ 'selected' if form.gender == g }}>{{ g }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label for="dob">Date of birth</label>
+        <input type="date" id="dob" name="dob" autocomplete="bday" value="{{ form.dob or '' }}">
+      </div>
+      <div class="field">
+        <label for="hostel_status">Where do you stay?</label>
+        <select id="hostel_status" name="hostel_status">
+          <option value="Day Scholar">At home (day scholar)</option>
+          <option value="Hosteller" {{ 'selected' if form.hostel_status == 'Hosteller' }}>In the hostel</option>
+        </select>
+      </div>
+    </div>
+  </details>
+
+  <label class="auth-consent">
+    <input type="checkbox" name="consent" value="1" required {{ 'checked' if form.consent }}>
+    <span>I understand that campus counsellors can read what I write here, and that MindCare is a support tool, not a medical diagnosis.</span>
+  </label>
+
+  <button class="btn btn-primary auth-submit" type="submit">Create account</button>
+</form>
+
+<p class="auth-switch">Already have an account? <a href="{{ url_for('auth.login') }}">Sign in</a></p>
+{% endblock %}

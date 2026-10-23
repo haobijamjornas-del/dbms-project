@@ -1,0 +1,234 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% import "_icons.html" as ic %}
+{% block title %}Dashboard · MindCare{% endblock %}
+{% block heading %}{{ greeting }}, {{ g.user.display_name | firstname }}{% endblock %}
+{% block subheading %}{{ today }} · here is what needs your attention{% endblock %}
+{% block topbar_actions %}
+  <a class="btn btn-primary" href="{{ url_for('assessments.create') }}">{{ ic.icon('plus', 16) }} New entry</a>
+{% endblock %}
+
+{% block content %}
+{% set p = priorities %}
+<section class="card priorities">
+  <div class="hd"><h3>Today's priorities</h3><div class="spacer"></div>
+    <span class="tiny faint">{{ thought }}</span></div>
+  <div class="bd prio-grid">
+    {% if p.critical %}
+      <a class="prio prio-danger" href="{{ url_for('alerts.index', priority='CRITICAL') }}">
+        <span class="prio-icon">{{ ic.icon('alert', 20) }}</span>
+        <span><b>{{ p.critical }} urgent alert{{ 's' if p.critical != 1 }}</b>
+          <span>Self-harm answers or crisis words{% if p.critical_mine is not none %} · {{ p.critical_mine }} assigned to you{% endif %}. Please reach out today.</span></span></a>
+    {% else %}
+      <div class="prio prio-ok">
+        <span class="prio-icon">{{ ic.icon('check', 20) }}</span>
+        <span><b>No urgent alerts</b><span>Nothing critical is waiting right now.</span></span></div>
+    {% endif %}
+
+    <a class="prio {{ 'prio-warn' if p.waiting else 'prio-ok' }}" href="{{ url_for('alerts.index') }}">
+      <span class="prio-icon">{{ ic.icon('bell', 20) }}</span>
+      <span><b>{% if p.waiting %}{{ p.waiting }} alert{{ 's' if p.waiting != 1 }} waiting over 3 days{% else %}No alerts waiting long{% endif %}</b>
+        <span>{% if p.waiting %}These students have not been contacted yet.{% else %}Every open alert is less than 3 days old.{% endif %}</span></span></a>
+
+    <a class="prio" href="{{ url_for('sessions.index') }}">
+      <span class="prio-icon">{{ ic.icon('calendar', 20) }}</span>
+      <span><b>{% if p.sessions_today %}{{ p.sessions_today }} session{{ 's' if p.sessions_today != 1 }} today{% else %}No sessions booked today{% endif %}</b>
+        <span>{% if p.next_session %}Next: {{ p.next_session.full_name }}, {{ p.next_session.scheduled_at|dt('%d %b, %H:%M') }}{% else %}A good time to follow up on open alerts.{% endif %}</span></span></a>
+
+    <a class="prio" href="{{ url_for('puzzles.index') }}">
+      <span class="prio-icon">{{ ic.icon('activity', 20) }}</span>
+      <span><b>{{ p.entries_24h }} new entr{{ 'y' if p.entries_24h == 1 else 'ies' }} in the last day</b>
+        <span>{{ p.high_24h }} high stress · {{ p.puzzles_7d }} puzzle set{{ 's' if p.puzzles_7d != 1 }}
+          and {{ p.games_7d }} rescue game{{ 's' if p.games_7d != 1 }} this week</span></span></a>
+  </div>
+</section>
+
+<div class="grid g4 stat-row">
+  <div class="stat accent">
+    <div class="k">Students</div>
+    <div class="v">{{ stats.students }}</div>
+    <div class="d">across 6 departments</div>
+  </div>
+  <div class="stat">
+    <div class="k">Entries recorded</div>
+    <div class="v">{{ stats.assessments }}</div>
+    <div class="d">{{ stats.assessments_7d }} in the last 7 days</div>
+  </div>
+  <div class="stat danger">
+    <div class="k">Open alerts</div>
+    <div class="v">{{ stats.open_alerts }}</div>
+    <div class="d">{{ stats.critical }} need urgent attention</div>
+  </div>
+  <div class="stat warn">
+    <div class="k">High-stress entries</div>
+    <div class="v">{{ stats.high_pct }}%</div>
+    <div class="d">of all entries</div>
+  </div>
+</div>
+
+<div class="grid g4 stat-row">
+  <div class="stat accent">
+    <div class="k">Full assessments</div>
+    <div class="v">{{ stats.screenings }}</div>
+    <div class="d">PHQ-9, GAD-7 and PSS-10</div>
+  </div>
+  <div class="stat danger">
+    <div class="k">High overall result</div>
+    <div class="v">{{ stats.screening_high }}</div>
+    <div class="d">of {{ stats.screenings }} full assessments</div>
+  </div>
+  <div class="stat danger">
+    <div class="k">Flagged self-harm answers</div>
+    <div class="v">{{ stats.critical_items }}</div>
+    <div class="d">need same-day contact</div>
+  </div>
+  <div class="stat">
+    <div class="k">Upcoming sessions</div>
+    <div class="v">{{ stats.sessions_upcoming }}</div>
+    <div class="d">booked, not yet held</div>
+  </div>
+</div>
+
+<div class="grid g23">
+  <div>
+    <div class="card">
+      <div class="hd"><h3>Entries over the last 30 days</h3><div class="spacer"></div>
+        <span class="legend">
+          <span><span class="dot" style="background:var(--low)"></span>Low</span>
+          <span><span class="dot" style="background:var(--moderate)"></span>Medium</span>
+          <span><span class="dot" style="background:var(--high)"></span>High</span>
+        </span>
+      </div>
+      <div class="bd">
+        {% if trend %}
+          <div style="display:flex; align-items:flex-end; gap:3px; height:150px">
+            {% set peak = (trend | map(attribute='total') | max) or 1 %}
+            {% for d in trend %}
+              <div style="flex:1; display:flex; flex-direction:column-reverse;
+                          height:{{ d.total / peak * 100 }}%; min-width:4px; gap:1px"
+                   title="{{ d.entry_date }} — {{ d.total }} entries ({{ d.high }} high)">
+                {% set t = d.total or 1 %}
+                <div style="height:{{ d.low/t*100 }}%; background:var(--low)"></div>
+                <div style="height:{{ d.moderate/t*100 }}%; background:var(--moderate)"></div>
+                <div style="height:{{ d.high/t*100 }}%; background:var(--high)"></div>
+              </div>
+            {% endfor %}
+          </div>
+          <div class="tiny faint" style="display:flex; justify-content:space-between; margin-top:7px">
+            <span>{{ trend[0].entry_date }}</span><span>{{ trend[-1].entry_date }}</span>
+          </div>
+        {% else %}<div class="empty">No entries in the last 30 days.</div>{% endif %}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="hd"><h3>Needs follow-up</h3><div class="spacer"></div>
+        <a class="btn btn-sm" href="{{ url_for('alerts.index') }}">See all alerts</a></div>
+      <div class="bd tight table-wrap">
+        <table>
+          <thead><tr>
+            <th>Priority</th><th>Student</th><th>What they wrote</th><th>Topic</th>
+            <th>Raised</th><th></th>
+          </tr></thead>
+          <tbody>
+          {% for a in queue %}
+            <tr>
+              <td>{{ m.priority_badge(a.priority) }}</td>
+              <td><a href="{{ url_for('students.detail', student_id=a.student_id) }}">
+                    {{ a.student_name }}</a>
+                  <div class="tiny faint">{{ a.dept_code }} · {{ a.enrollment_no }}</div></td>
+              <td class="small" style="max-width:300px">{{ a.entry_text|truncate(85) }}</td>
+              <td class="small">{{ a.theme_name or '—' }}</td>
+              <td class="small muted">{{ a.raised_at|ago }}</td>
+              <td><a class="btn btn-sm" href="{{ url_for('assessments.detail', assessment_id=a.assessment_id) }}">Open</a></td>
+            </tr>
+          {% else %}
+            <tr><td colspan="6" class="empty">Nothing needs follow-up right now.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="card">
+      <div class="hd"><h3>Stress levels</h3></div>
+      <div class="bd">
+        <div class="donut-wrap">
+          {% set segs = [] %}
+          {% for l in level_mix %}{% set _ = segs.append((l.n, l.color_hex)) %}{% endfor %}
+          {{ m.donut(segs, stats.assessments, 'entries') }}
+          <div style="flex:1; min-width:130px">
+            {% for l in level_mix %}
+              <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px">
+                <span class="dot" style="background:{{ l.color_hex }}"></span>
+                <span class="small">{{ l.level_name }}</span>
+                <span style="flex:1"></span>
+                <b class="small">{{ l.n }}</b>
+                <span class="tiny faint">
+                  {{ (l.n / stats.assessments * 100) | round(1) if stats.assessments else 0 }}%</span>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="hd"><h3>Students to check on</h3></div>
+      <div class="bd tight table-wrap">
+        <table>
+          <thead><tr><th>Student</th><th class="num">High entries</th><th class="num">Risk score</th></tr></thead>
+          <tbody>
+          {% for s in at_risk %}
+            <tr>
+              <td><a href="{{ url_for('students.detail', student_id=s.student_id) }}">{{ s.full_name }}</a>
+                  <div class="tiny faint">{{ s.dept_code }} · Year {{ s.year_of_study }}</div></td>
+              <td class="num">{{ s.high_count }} of {{ s.total_assessments }}</td>
+              <td class="num"><b>{{ s.risk_index }}</b></td>
+            </tr>
+          {% else %}
+            <tr><td colspan="3" class="empty">No students to show yet.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    {% if subscale_mix %}
+    <div class="card">
+      <div class="hd"><h3>Full assessment results</h3><div class="spacer"></div>
+        <a class="btn btn-sm" href="{{ url_for('screening.index') }}">See all</a></div>
+      <div class="bd">
+        {% set ns = namespace(code='') %}
+        {% for r in subscale_mix %}
+          {% if r.code != ns.code %}
+            {% set ns.code = r.code %}
+            <div class="small muted" style="font-weight:600; margin:12px 0 6px">
+              {{ r.code }} · {{ r.measures }}</div>
+          {% endif %}
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:5px">
+            <span class="dot" style="background:{{ r.color_hex }}"></span>
+            <span class="small">{{ r.band_name or 'Not scored' }}</span>
+            <span style="flex:1"></span>
+            <b class="small">{{ r.n }}</b>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="card">
+      <div class="hd"><h3>What students write about most</h3></div>
+      <div class="bd">
+        {% set tbars = [] %}
+        {% for t in themes %}
+          {% set _ = tbars.append((t.theme_name, t.high, 'var(--high)')) %}
+        {% endfor %}
+        {% if tbars %}{{ m.bar_chart(tbars) }}{% else %}<div class="empty">No entries yet.</div>{% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% import "_icons.html" as ic %}
+{% import "_town.html" as town %}
+{% block title %}City Rescue · MindCare{% endblock %}
+{% block heading %}City Rescue{% endblock %}
+{% block subheading %}A quick game about getting the right help · about 3 minutes{% endblock %}
+
+{% block content %}
+{% set group = profile.group %}
+<div class="grid g23">
+  <div>
+    {% if unfinished %}
+      <div class="flash flash-warning">
+        You started a game {{ unfinished.started_at|ago }} and did not finish.
+        Pressing the button below will carry on from where you stopped.
+      </div>
+    {% endif %}
+
+    <div class="card rescue-hero">
+      <div class="bd">
+        <div class="puzzle-hero-top">
+          <div class="puzzle-hero-icon rescue-hero-icon">{{ ic.icon('siren', 30) }}</div>
+          <div>
+            <h2>Emergencies are happening around town</h2>
+            <p class="muted">An accident, a fire, a lost child, a friend who is not okay. For each one,
+              drag the card to the place that can help most. {{ rounds }} emergencies, and the quicker you
+              choose the right place, the more points you get.</p>
+          </div>
+        </div>
+
+        <div class="level-pill">
+          <span class="level-pill-tag">Your level</span>
+          <div>
+            <b>{{ group.label }}</b>
+            <span class="muted small">
+              {% if profile.matched %}
+                You are {{ profile.age }}, so you will get emergencies written for ages
+                {% if group.max_age >= 100 %}{{ group.min_age }} and over{% else %}{{ group.min_age }}–{{ group.max_age }}{% endif %}.
+              {% else %}
+                We do not have your date of birth, so you will get the middle level
+                (ages {{ group.min_age }}–{{ group.max_age }}).
+              {% endif %}
+            </span>
+          </div>
+        </div>
+
+        <form method="post" action="{{ url_for('game.start') }}">
+          <button class="btn btn-primary btn-lg puzzle-start" type="submit">
+            {% if unfinished %}Carry on where I left off{% elif games %}Play again{% else %}Start the game{% endif %}
+            {{ ic.icon('chevron', 16) }}
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="hd"><h3>The places in town</h3><div class="spacer"></div>
+        <span class="tiny faint">know who helps with what</span></div>
+      <div class="bd">
+        <div class="place-guide">
+          {% for p in places %}
+            <div class="place-guide-item" style="--place:{{ p.color_hex }}">
+              {{ town.building(p.code) }}
+              <div><b>{{ p.name }}</b><span class="tiny muted">{{ p.helps_with }}</span></div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="hd"><h3>Your past games</h3>
+        {% if best and best.best is not none %}<div class="spacer"></div>
+          <span class="tiny faint">best score {{ best.best }} of {{ rounds * 15 }}</span>{% endif %}</div>
+      <div class="bd tight table-wrap">
+        <table>
+          <thead><tr><th>Date</th><th>Level</th><th class="num">Score</th><th>Stars</th><th class="num">Right</th><th></th></tr></thead>
+          <tbody>
+          {% for g in games %}
+            <tr>
+              <td class="small" style="white-space:nowrap">{{ g.completed_at|dt('%d %b %Y') }}
+                <div class="tiny faint">{{ g.completed_at|ago }}</div></td>
+              <td class="small">{{ g.age_group }}</td>
+              <td class="num"><b>{{ g.score }}</b><span class="tiny faint">/{{ g.max_score }}</span></td>
+              <td>{{ town.stars(g.stars, 16) }}</td>
+              <td class="num small">{{ g.correct_rounds }} of {{ g.rounds }}</td>
+              <td><a class="btn btn-sm" href="{{ url_for('game.result', game_id=g.game_id) }}">View</a></td>
+            </tr>
+          {% else %}
+            <tr><td colspan="6" class="empty">You have not played yet. Your games will appear here.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="card">
+      <div class="hd"><h3>How to play</h3></div>
+      <div class="bd">
+        <ol class="steps">
+          <li><b>Read the emergency</b> on the card in the middle of the road.</li>
+          <li><b>Drag the card</b> onto the building that can help. You can also tap a building,
+            or press its number on the keyboard.</li>
+          <li><b>See why.</b> After each choice you find out the right place and what to do.</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="hd"><h3>Points</h3></div>
+      <div class="bd small">
+        <dl class="kv">
+          <dt>Right place, fast</dt><dd><b>15</b> points</dd>
+          <dt>Right place</dt><dd><b>10–12</b> points</dd>
+          <dt>Wrong place or time ran out</dt><dd><b>0</b></dd>
+        </dl>
+        <p class="tiny muted" style="margin:10px 0 0">Three stars if you get almost all of them right.</p>
+      </div>
+    </div>
+
+    <div class="card numbers-card">
+      <div class="hd">{{ ic.icon('phone', 16) }}<h3>Numbers worth knowing</h3></div>
+      <div class="bd">
+        {% for number, what in numbers %}
+          <div class="number-row"><b>{{ number }}</b><span class="small muted">{{ what }}</span></div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

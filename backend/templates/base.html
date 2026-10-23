@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}MindCare{% endblock %}</title>
+<link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<script type="module" src="{{ url_for('static', filename='js/main.js') }}"></script>
+</head>
+<body>
+{% import "_icons.html" as ic %}
+{% set role_label = {'student': 'Student', 'counsellor': 'Counsellor', 'admin': 'Administrator'}[g.user.role] %}
+<input type="checkbox" id="nav-toggle" class="nav-toggle" aria-label="Show menu">
+<div class="shell">
+
+  <aside class="sidebar" id="sidebar">
+    <a class="brand" href="{{ url_for('main.dashboard') }}">
+      {{ ic.logo(32) }}
+      <span><b>MindCare</b><small>Student wellbeing</small></span>
+    </a>
+
+    <nav class="nav" aria-label="Main">
+      <a href="{{ url_for('main.dashboard') }}" class="{{ 'active' if request.endpoint == 'main.dashboard' }}">
+        {{ ic.icon('dashboard') }}<span>Dashboard</span></a>
+
+      {% if g.user.role == 'student' %}
+        <div class="label">My wellbeing</div>
+        <a href="{{ url_for('assessments.create') }}" class="{{ 'active' if request.endpoint == 'assessments.create' }}">
+          {{ ic.icon('write') }}<span>Write an entry</span></a>
+        <a href="{{ url_for('screening.start') }}" class="{{ 'active' if request.endpoint in ('screening.start', 'screening.step') }}">
+          {{ ic.icon('assessment') }}<span>Full assessment</span></a>
+        <a href="{{ url_for('screening.index') }}" class="{{ 'active' if request.endpoint in ('screening.index', 'screening.result') }}">
+          {{ ic.icon('reports') }}<span>My reports</span></a>
+        <a href="{{ url_for('students.detail', student_id=g.user.student_id) }}" class="{{ 'active' if request.endpoint == 'students.detail' }}">
+          {{ ic.icon('history') }}<span>My history</span></a>
+        <a href="{{ url_for('puzzles.index') }}" class="{{ 'active' if request.endpoint and request.endpoint.startswith('puzzles.') }}">
+          {{ ic.icon('puzzle') }}<span>Brain puzzles</span></a>
+        <a href="{{ url_for('game.index') }}" class="{{ 'active' if request.endpoint and request.endpoint.startswith('game.') }}">
+          {{ ic.icon('siren') }}<span>City Rescue</span></a>
+        <a href="{{ url_for('wellness.index') }}" class="{{ 'active' if request.endpoint == 'wellness.index' }}">
+          {{ ic.icon('moon') }}<span>Wellness log</span></a>
+      {% else %}
+        <div class="label">Care</div>
+        <a href="{{ url_for('alerts.index') }}" class="{{ 'active' if request.endpoint == 'alerts.index' }}">
+          {{ ic.icon('bell') }}<span>Alerts</span>
+          {% if open_alert_count %}<span class="badge-n">{{ open_alert_count }}</span>{% endif %}</a>
+        <a href="{{ url_for('sessions.index') }}" class="{{ 'active' if request.endpoint == 'sessions.index' }}">
+          {{ ic.icon('calendar') }}<span>Sessions</span></a>
+        <a href="{{ url_for('students.index') }}" class="{{ 'active' if request.endpoint in ('students.index', 'students.detail') }}">
+          {{ ic.icon('users') }}<span>Students</span></a>
+        <a href="{{ url_for('screening.index') }}" class="{{ 'active' if request.endpoint in ('screening.index', 'screening.result') }}">
+          {{ ic.icon('list') }}<span>Full assessments</span></a>
+        <a href="{{ url_for('assessments.create') }}" class="{{ 'active' if request.endpoint == 'assessments.create' }}">
+          {{ ic.icon('write') }}<span>New entry</span></a>
+
+        <div class="label">Insights</div>
+        <a href="{{ url_for('analytics.index') }}" class="{{ 'active' if request.endpoint == 'analytics.index' }}">
+          {{ ic.icon('chart') }}<span>Analytics</span></a>
+        <a href="{{ url_for('puzzles.index') }}" class="{{ 'active' if request.endpoint and request.endpoint.startswith('puzzles.') }}">
+          {{ ic.icon('puzzle') }}<span>Brain puzzles</span></a>
+        <a href="{{ url_for('game.index') }}" class="{{ 'active' if request.endpoint and request.endpoint.startswith('game.') }}">
+          {{ ic.icon('siren') }}<span>City Rescue</span></a>
+      {% endif %}
+
+      {% if g.user.role == 'admin' %}
+        <div class="label">Administration</div>
+        <a href="{{ url_for('admin.models') }}" class="{{ 'active' if request.endpoint == 'admin.models' }}">
+          {{ ic.icon('cpu') }}<span>Models</span></a>
+        <a href="{{ url_for('admin.schema') }}" class="{{ 'active' if request.endpoint == 'admin.schema' }}">
+          {{ ic.icon('database') }}<span>Database</span></a>
+        <a href="{{ url_for('admin.sql_console') }}" class="{{ 'active' if request.endpoint == 'admin.sql_console' }}">
+          {{ ic.icon('terminal') }}<span>SQL console</span></a>
+      {% endif %}
+    </nav>
+
+    {% if g.user.role == 'student' %}
+      <div class="side-help">
+        {{ ic.icon('phone', 16) }}
+        <div><b>Need to talk?</b><span>Tele-MANAS 14416 · free, any time</span></div>
+      </div>
+    {% endif %}
+
+    <div class="user-card">
+      <span class="avatar">{{ g.user.display_name | initials }}</span>
+      <div class="user-meta">
+        <b>{{ g.user.display_name }}</b>
+        {% if role_label != g.user.display_name %}<span>{{ role_label }}</span>{% endif %}
+      </div>
+      <a class="icon-btn" href="{{ url_for('auth.logout') }}" title="Sign out" aria-label="Sign out">{{ ic.icon('logout') }}</a>
+    </div>
+  </aside>
+  <label for="nav-toggle" class="scrim" aria-hidden="true"></label>
+
+  <div class="main">
+    <header class="topbar">
+      <label for="nav-toggle" class="menu-btn" title="Menu">{{ ic.icon('menu', 22) }}</label>
+      <div class="page-title">
+        <h1>{% block heading %}{% endblock %}</h1>
+        <p class="sub">{% block subheading %}{% endblock %}</p>
+      </div>
+      <div class="topbar-actions">{% block topbar_actions %}{% endblock %}</div>
+    </header>
+
+    <main class="content">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for cat, msg in messages %}
+          <div class="flash flash-{{ cat }}" role="{{ 'alert' if cat == 'danger' else 'status' }}">{{ msg }}</div>
+        {% endfor %}
+      {% endwith %}
+      {% block content %}{% endblock %}
+    </main>
+
+    <footer class="footer">
+      <span>© {{ now.year }} MindCare · Student wellbeing</span>
+      <span>In crisis? Call <b>112</b> or Tele-MANAS <b>14416</b></span>
+    </footer>
+  </div>
+</div>
+</body>
+</html>

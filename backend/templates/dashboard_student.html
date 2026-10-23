@@ -1,0 +1,251 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% import "_support.html" as sup %}
+{% import "_icons.html" as ic %}
+{% block title %}My dashboard · MindCare{% endblock %}
+{% block heading %}{{ greeting }}, {{ g.user.display_name | firstname }}{% endblock %}
+{% block subheading %}{{ today }} · everything here is private to you and your counsellor{% endblock %}
+{% block topbar_actions %}
+  <a class="btn btn-primary" href="{{ url_for('assessments.create') }}">{{ ic.icon('write', 16) }} Write an entry</a>
+{% endblock %}
+
+{% block content %}
+<section class="card welcome" id="checkin">
+  <div class="welcome-main">
+    <span class="eyebrow">Daily check-in</span>
+    {% if mood %}
+      <div class="mood-done">
+        <span class="mood-chip mood-{{ mood.key }}">{{ ic.mood_face(mood.key, 38) }}</span>
+        <div>
+          <h2>You are feeling <span class="mood-word mood-{{ mood.key }}">{{ mood.label|lower }}</span> today</h2>
+          <p class="muted">{{ mood.reply }}</p>
+        </div>
+      </div>
+      {% if mood.key in ('rough', 'low') %}
+        <div class="welcome-actions">
+          <a class="btn btn-primary btn-sm" href="{{ url_for('assessments.create') }}">Write about it</a>
+          <a class="btn btn-sm" href="#helplines">Talk to someone</a>
+        </div>
+      {% endif %}
+      <details class="mood-change">
+        <summary>Change today's answer</summary>
+        <form class="mood-picker small-picker" method="post" action="{{ url_for('wellness.checkin') }}">
+          {% for value, key, label in moods %}
+            <button type="submit" name="mood" value="{{ value }}" class="mood-btn mood-{{ key }} {{ 'is-picked' if key == mood.key }}">
+              {{ ic.mood_face(key, 26) }}<span>{{ label }}</span></button>
+          {% endfor %}
+        </form>
+      </details>
+    {% else %}
+      <h2>How are you feeling today?</h2>
+      <p class="muted">Pick the face that fits best. It takes a second and helps you notice patterns over time.</p>
+      <form class="mood-picker" method="post" action="{{ url_for('wellness.checkin') }}">
+        {% for value, key, label in moods %}
+          <button type="submit" name="mood" value="{{ value }}" class="mood-btn mood-{{ key }}">
+            {{ ic.mood_face(key, 36) }}<span>{{ label }}</span></button>
+        {% endfor %}
+      </form>
+    {% endif %}
+  </div>
+
+  <div class="welcome-side">
+    <span class="eyebrow">Your last 7 days</span>
+    <div class="week-strip">
+      {% for d in week.days %}
+        <span class="week-day {{ 'on' if d.active }} {{ 'today' if d.today }}" title="{{ d.name }}{{ ': checked in' if d.active }}">{{ d.label }}</span>
+      {% endfor %}
+    </div>
+    <p class="tiny muted week-note">
+      {% if week.count == 0 %}A fresh start. Any small check-in counts.
+      {% elif week.count >= 5 %}{{ week.count }} of the last 7 days. That is a lovely habit.
+      {% else %}You checked in on {{ week.count }} of the last 7 days.{% endif %}
+    </p>
+    <div class="thought">
+      <span class="thought-icon">{{ ic.icon('sun', 18) }}</span>
+      <div><span class="eyebrow">A thought for today</span><p>{{ thought }}</p></div>
+    </div>
+  </div>
+</section>
+
+<nav class="quick-actions" aria-label="Quick actions">
+  <a class="qa" href="{{ url_for('assessments.create') }}">
+    <span class="qa-icon qa-blue">{{ ic.icon('write', 20) }}</span>
+    <span><b>Write an entry</b><span>Put today into words</span></span></a>
+  <a class="qa" href="{{ url_for('screening.start') }}">
+    <span class="qa-icon qa-teal">{{ ic.icon('assessment', 20) }}</span>
+    <span><b>Full assessment</b><span>Questionnaires, about 5 minutes</span></span></a>
+  <a class="qa" href="{{ url_for('puzzles.index') }}">
+    <span class="qa-icon qa-purple">{{ ic.icon('puzzle', 20) }}</span>
+    <span><b>Brain puzzles</b><span>Quick puzzles for your age</span></span></a>
+  <a class="qa" href="{{ url_for('game.index') }}">
+    <span class="qa-icon qa-red">{{ ic.icon('siren', 20) }}</span>
+    <span><b>City Rescue</b><span>A game about getting help</span></span></a>
+  <a class="qa" href="{{ url_for('wellness.index') }}">
+    <span class="qa-icon qa-amber">{{ ic.icon('moon', 20) }}</span>
+    <span><b>Wellness log</b><span>Sleep, exercise, screen time</span></span></a>
+</nav>
+
+{% if not latest_screening %}
+  <div class="card callout">
+    <div class="bd" style="display:flex; gap:18px; align-items:center; flex-wrap:wrap">
+      <div style="flex:1; min-width:260px">
+        <h3 style="margin-bottom:5px">Start with a full assessment</h3>
+        <p class="muted small" style="margin:0">
+          Three short questionnaires and a few lines about your week — about five
+          minutes. It gives you a starting point, so you can see how things change.</p>
+      </div>
+      <a class="btn btn-primary" href="{{ url_for('screening.start') }}">Take the assessment →</a>
+    </div>
+  </div>
+{% endif %}
+
+<div class="grid g4 stat-row">
+  <div class="stat accent">
+    <div class="k">Entries written</div>
+    <div class="v">{{ profile.total_assessments if profile else 0 }}</div>
+    <div class="d">{% if profile and profile.last_assessed_at %}last one {{ profile.last_assessed_at|ago }}{% else %}none yet{% endif %}</div>
+  </div>
+  <div class="stat">
+    <div class="k">Your latest level</div>
+    <div class="v" style="font-size:1.25rem; padding-top:8px">
+      {{ m.level_badge(profile.latest_level if profile else None) }}</div>
+    <div class="d">from your newest entry</div>
+  </div>
+  <div class="stat {{ 'danger' if latest_screening and latest_screening.composite_band == 'High'
+                      else ('warn' if latest_screening and latest_screening.composite_band == 'Medium'
+                            else 'ok') }}">
+    <div class="k">Latest full assessment</div>
+    <div class="v">{% if latest_screening %}{{ latest_screening.composite_score }}<span
+        style="font-size:1rem; color:var(--faint)"> /100</span>{% else %}—{% endif %}</div>
+    <div class="d">{% if latest_screening %}{{ latest_screening.completed_at|ago }}{% else %}not taken yet{% endif %}</div>
+  </div>
+  <a class="stat stat-link" href="{{ url_for('puzzles.result', attempt_id=puzzle.attempt_id) if puzzle else url_for('puzzles.index') }}">
+    <div class="k">Brain puzzles</div>
+    <div class="v">{% if puzzle %}{{ puzzle.accuracy_pct|round|int }}<span style="font-size:1rem; color:var(--faint)">%</span>{% else %}—{% endif %}</div>
+    <div class="d">{% if puzzle %}{{ puzzle.band }} · {{ puzzle.completed_at|ago }}{% else %}not tried yet{% endif %}</div>
+  </a>
+</div>
+
+<div class="grid g23">
+  <div>
+    <div class="card">
+      <div class="hd"><h3>Your recent entries</h3><div class="spacer"></div>
+        <a class="btn btn-sm" href="{{ url_for('students.detail', student_id=g.user.student_id) }}">See all</a></div>
+      <div class="bd tight table-wrap">
+        <table>
+          <thead><tr><th>When</th><th>What you wrote</th><th>Level</th><th>Topic</th><th></th></tr></thead>
+          <tbody>
+          {% for a in recent %}
+            <tr>
+              <td class="small muted" style="white-space:nowrap">{{ a.created_at|ago }}</td>
+              <td class="small" style="max-width:340px">{{ a.entry_text|truncate(90) }}</td>
+              <td>{{ m.level_badge(a.stress_level) }}</td>
+              <td class="small">{{ a.theme_name or '—' }}</td>
+              <td><a class="btn btn-sm" href="{{ url_for('assessments.detail', assessment_id=a.assessment_id) }}">View</a></td>
+            </tr>
+          {% else %}
+            <tr><td colspan="5" class="empty">
+              You have not written anything yet.<br>
+              <a class="btn btn-primary btn-sm" style="margin-top:12px"
+                 href="{{ url_for('assessments.create') }}">Write your first entry</a></td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    {% if trend %}
+    <div class="card">
+      <div class="hd"><h3>Your last 30 days</h3><div class="spacer"></div>
+        <span class="tiny faint">taller bar = more stress that day</span></div>
+      <div class="bd">
+        <div style="display:flex; align-items:flex-end; gap:4px; height:110px">
+          {% for d in trend %}
+            {% set h = (d.avg_lvl / 2 * 100) if d.avg_lvl else 4 %}
+            <div style="flex:1; min-width:6px; height:{{ h if h > 4 else 4 }}%;
+                        border-radius:3px 3px 0 0;
+                        background:{{ 'var(--high)' if d.avg_lvl >= 1.5
+                                      else ('var(--moderate)' if d.avg_lvl >= 0.75 else 'var(--low)') }}"
+                 title="{{ d.d }} — average {{ d.avg_lvl }} over {{ d.n }} entries"></div>
+          {% endfor %}
+        </div>
+        <div class="tiny faint" style="display:flex; justify-content:space-between; margin-top:7px">
+          <span>{{ trend[0].d }}</span><span>{{ trend[-1].d }}</span>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <div>
+    {% if subscales %}
+    <div class="card">
+      <div class="hd"><h3>Your latest full assessment</h3><div class="spacer"></div>
+        <a class="btn btn-sm"
+           href="{{ url_for('screening.result', screening_id=latest_screening.screening_id) }}">Report</a></div>
+      <div class="bd">
+        {% for s in subscales %}
+          <div style="margin-bottom:13px">
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:5px">
+              <span class="badge b-grey">{{ s.instrument_code }}</span>
+              <span class="tiny muted">{{ s.measures }}</span>
+              <span style="flex:1"></span>
+              <b class="small">{{ s.raw_score }}/{{ s.score_max }}</b>
+            </div>
+            <div class="bar-track" style="height:7px">
+              <div class="bar-fill" style="width:{{ s.normalised_pct }}%; background:{{ s.color_hex }}"></div>
+            </div>
+            <div class="tiny" style="color:{{ s.color_hex }}; margin-top:4px">{{ s.band_name }}</div>
+          </div>
+        {% endfor %}
+        <a class="btn btn-sm" style="width:100%; justify-content:center; margin-top:6px"
+           href="{{ url_for('screening.start') }}">Take it again</a>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="card">
+      <div class="hd"><h3>Your appointments</h3><div class="spacer"></div>
+        <span class="tiny faint">{{ sessions | selectattr('status','equalto','SCHEDULED') | list | length }} upcoming</span></div>
+      <div class="bd">
+        {% for s in sessions %}
+          <div style="padding:10px 0; border-bottom:1px solid var(--border)">
+            <div style="display:flex; gap:8px; align-items:center">
+              <b class="small">{{ s.scheduled_at|dt }}</b>
+              <span style="flex:1"></span>
+              {{ m.status_badge(s.status) }}
+            </div>
+            <div class="tiny muted" style="margin-top:3px">
+              {{ s.counsellor_name }} · {{ s.mode }} · {{ s.duration_min }} min</div>
+          </div>
+        {% else %}
+          <div class="empty small" style="padding:18px 8px">No appointments booked.</div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="hd"><h3>Your wellness log</h3><div class="spacer"></div>
+        <a class="btn btn-sm" href="{{ url_for('wellness.index') }}">Log today</a></div>
+      <div class="bd tight table-wrap">
+        <table>
+          <thead><tr><th>Date</th><th class="num">Sleep</th><th class="num">Mood</th></tr></thead>
+          <tbody>
+          {% for w in wellness %}
+            <tr>
+              <td class="small">{{ w.log_date }}</td>
+              <td class="num small">{{ w.sleep_hours }}h</td>
+              <td class="num small">{{ w.mood_rating }}/10</td>
+            </tr>
+          {% else %}
+            <tr><td colspan="3" class="empty small">Nothing logged yet.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="helplines">{{ sup.helpline_card(helplines) }}</div>
+  </div>
+</div>
+{% endblock %}

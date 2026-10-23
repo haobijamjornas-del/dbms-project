@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}Wellness log · MindCare{% endblock %}
+{% block heading %}Wellness log{% endblock %}
+{% block subheading %}Track sleep, mood, exercise and screen time{% endblock %}
+
+{% block content %}
+<div class="grid g4" style="margin-bottom:18px">
+  <div class="stat ok"><div class="k">Avg sleep</div>
+    <div class="v">{{ avg.sleep or '—' }}<span style="font-size:1rem">h</span></div>
+    <div class="d">last 30 days</div></div>
+  <div class="stat accent"><div class="k">Avg mood</div>
+    <div class="v">{{ avg.mood or '—' }}<span style="font-size:1rem">/10</span></div>
+    <div class="d">self-reported</div></div>
+  <div class="stat"><div class="k">Avg exercise</div>
+    <div class="v">{{ avg.exercise or '—' }}<span style="font-size:1rem">m</span></div>
+    <div class="d">per logged day</div></div>
+  <div class="stat warn"><div class="k">Avg screen time</div>
+    <div class="v">{{ avg.screen or '—' }}<span style="font-size:1rem">h</span></div>
+    <div class="d">per logged day</div></div>
+</div>
+
+<div class="grid g32">
+  <div class="card">
+    <div class="hd"><h3>Log a day</h3></div>
+    <div class="bd">
+      <form method="post">
+        <div class="field">
+          <label for="log_date">Date</label>
+          <input type="date" name="log_date" id="log_date" value="{{ today }}" required>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="sleep_hours">Sleep (hours)</label>
+            <input type="number" step="0.5" min="0" max="24" name="sleep_hours"
+                   id="sleep_hours" value="7" required>
+          </div>
+          <div class="field">
+            <label for="mood_rating">Mood (1–10)</label>
+            <input type="number" min="1" max="10" name="mood_rating" id="mood_rating"
+                   value="6" required>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="exercise_min">Exercise (minutes)</label>
+            <input type="number" min="0" max="600" name="exercise_min" id="exercise_min" value="30">
+          </div>
+          <div class="field">
+            <label for="screen_time_hrs">Screen time (hours)</label>
+            <input type="number" step="0.5" min="0" max="24" name="screen_time_hrs"
+                   id="screen_time_hrs" value="5">
+          </div>
+        </div>
+        <button class="btn btn-primary" type="submit" style="width:100%">Save log</button>
+        <div class="tiny faint" style="margin-top:9px">
+          Saving the same date again updates that day.
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="hd"><h3>Your log</h3><div class="spacer"></div>
+      <span class="tiny faint">with your stress level that day</span></div>
+    <div class="bd tight table-wrap">
+      <table>
+        <thead><tr><th>Date</th><th class="num">Sleep</th><th class="num">Mood</th>
+          <th class="num">Exercise</th><th class="num">Screen</th>
+          <th class="num">Entries</th><th class="num">Avg stress</th></tr></thead>
+        <tbody>
+        {% for w in rows %}
+          <tr>
+            <td class="small">{{ w.log_date }}</td>
+            <td class="num small">{{ w.sleep_hours }}h</td>
+            <td class="num small">
+              <span class="badge {{ 'b-low' if w.mood_rating >= 7
+                                    else ('b-moderate' if w.mood_rating >= 4 else 'b-high') }}">
+                {{ w.mood_rating }}</span></td>
+            <td class="num small">{{ w.exercise_min }}m</td>
+            <td class="num small">{{ w.screen_time_hrs }}h</td>
+            <td class="num small">{{ w.entries_that_day }}</td>
+            <td class="num small">
+              {% if w.avg_stress_that_day is not none %}<b>{{ w.avg_stress_that_day }}</b>
+              {% else %}<span class="faint">—</span>{% endif %}</td>
+          </tr>
+        {% else %}
+          <tr><td colspan="7" class="empty">Nothing logged yet.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% import "_support.html" as sup %}
+{% block title %}Assessment report · MindCare{% endblock %}
+{% block heading %}Assessment report{% endblock %}
+{% block subheading %}{{ scr.student_name }} · completed {{ scr.completed_at|dt }}
+  {% if scr.is_baseline %}· baseline{% endif %}{% endblock %}
+{% block topbar_actions %}
+  {% if g.user.role == 'student' %}
+    <a class="btn" href="{{ url_for('screening.start') }}">Take another</a>
+  {% else %}
+    <a class="btn" href="{{ url_for('students.detail', student_id=scr.student_id) }}">
+      Student profile</a>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+{% if critical %}
+  <div class="flash flash-danger" style="align-items:flex-start">
+    <div>
+      <b>You flagged a question about self-harm.</b><br>
+      <span class="small">
+        {% for c in critical %}“{{ c.question_text }}” — answered
+          <b>{{ c.option_label }}</b>.{% endfor %}
+        A counsellor has been notified and will contact you. Please do not wait
+        for that call if things feel urgent: <b>Tele-MANAS 14416</b> is free and
+        answers 24×7. Talk to someone you trust today.
+      </span>
+    </div>
+  </div>
+{% endif %}
+
+<div class="grid g4" style="margin-bottom:18px">
+  <div class="stat {{ 'danger' if scr.composite_band == 'High'
+                      else ('warn' if scr.composite_band == 'Medium' else 'ok') }}">
+    <div class="k">Composite score</div>
+    <div class="v">{{ scr.composite_score }}<span style="font-size:1rem">/100</span></div>
+    <div class="d">{{ m.level_badge(scr.composite_band) }}</div>
+  </div>
+  {% for s in subscales %}
+    <div class="stat" style="border-left:3px solid {{ s.color_hex }}">
+      <div class="k">{{ s.instrument_code }} · {{ s.measures }}</div>
+      <div class="v">{{ s.raw_score }}<span style="font-size:1rem">/{{ s.score_max }}</span></div>
+      <div class="d"><b style="color:{{ s.color_hex }}">{{ s.band_name }}</b></div>
+    </div>
+  {% endfor %}
+</div>
+
+<div class="grid g23">
+  <div>
+    <div class="card">
+      <div class="hd"><h3>Subscale breakdown</h3><div class="spacer"></div></div>
+      <div class="bd">
+        {% for s in subscales %}
+          <div style="padding:13px 0; border-bottom:1px solid var(--border)">
+            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+                        margin-bottom:8px">
+              <span class="badge b-blue">{{ s.instrument_code }}</span>
+              <b class="small">{{ s.instrument_name }}</b>
+              <span style="flex:1"></span>
+              <b>{{ s.raw_score }} / {{ s.score_max }}</b>
+              <span class="badge" style="background:{{ s.color_hex }}22;
+                    color:{{ s.color_hex }}; border-color:{{ s.color_hex }}55">
+                {{ s.band_name }}</span>
+            </div>
+            <div class="bar-track" style="height:10px">
+              <div class="bar-fill" style="width:{{ s.normalised_pct }}%;
+                   background:{{ s.color_hex }}"></div>
+            </div>
+            <div class="tiny muted" style="margin-top:7px">{{ s.guidance }}</div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="hd"><h3>What you wrote</h3><div class="spacer"></div>
+        {% if scr.text_level %}{{ m.level_badge(scr.text_level) }}{% endif %}</div>
+      <div class="bd">
+        <div class="quote">{{ scr.entry_text }}</div>
+        {% if scr.text_level %}
+          <div style="display:flex; gap:24px; flex-wrap:wrap; margin-top:14px">
+            <div><div class="tiny muted">Model reading</div>
+              <b>{{ scr.text_level }}</b></div>
+            <div><div class="tiny muted">Confidence</div>
+              <b>{{ scr.text_confidence_pct }}%</b></div>
+            <div><div class="tiny muted">Topic</div>
+              <b>{{ scr.text_theme or '—' }}</b></div>
+          </div>
+          <div class="tiny faint" style="margin-top:11px">
+            <a href="{{ url_for('assessments.detail', assessment_id=scr.assessment_id) }}">
+              See the full text analysis →</a>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="hd"><h3>Where your score came from</h3><div class="spacer"></div>
+        <span class="tiny faint">highest-scoring answers first</span></div>
+      <div class="bd tight table-wrap">
+        <table>
+          <thead><tr><th>Instrument</th><th>Question</th><th>Your answer</th>
+            <th class="num">Contributes</th></tr></thead>
+          <tbody>
+          {% for it in top_items %}
+            {% set contrib = (it.option_max - it.option_value)
+                             if it.reverse_scored else it.option_value %}
+            <tr>
+              <td><span class="badge b-grey">{{ it.code }}</span>
+                {% if it.reverse_scored %}
+                  <div class="tiny faint" style="margin-top:3px">reverse-scored</div>
+                {% endif %}</td>
+              <td class="small" style="max-width:340px">{{ it.question_text }}</td>
+              <td class="small">{{ it.option_label }}</td>
+              <td class="num"><b>{{ contrib }}</b>
+                <span class="tiny faint">/{{ it.option_max }}</span></td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="bd" style="border-top:1px solid var(--border)">
+        <div class="tiny muted">
+          Some questions are worded positively, so answering “Very often” to them adds nothing to your score.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div>
+
+    {% if alert %}
+    <div class="card">
+      <div class="hd"><h3>Follow-up raised</h3></div>
+      <div class="bd">
+        <div style="display:flex; gap:7px; margin-bottom:9px">
+          {{ m.priority_badge(alert.priority) }} {{ m.status_badge(alert.status) }}
+        </div>
+        <dl class="kv">
+          <dt>Type</dt><dd>{{ m.alert_label(alert.alert_type) }}</dd>
+          <dt>Raised</dt><dd>{{ alert.raised_at|ago }}</dd>
+          <dt>Counsellor</dt><dd>{{ alert.counsellor_name or 'being assigned' }}</dd>
+        </dl>
+        {% if alert.remarks %}
+          <div class="tiny muted" style="margin-top:9px">{{ alert.remarks }}</div>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+    {% if history|length > 1 %}
+    <div class="card">
+      <div class="hd"><h3>Your composite over time</h3></div>
+      <div class="bd">
+        <div style="display:flex; align-items:flex-end; gap:5px; height:100px">
+          {% for h in history %}
+            <div style="flex:1; min-width:9px; height:{{ h.composite_score }}%;
+                        border-radius:3px 3px 0 0;
+                        background:{{ 'var(--high)' if h.composite_band == 'High'
+                                      else ('var(--moderate)' if h.composite_band == 'Medium'
+                                            else 'var(--low)') }};
+                        {{ 'outline:2px solid var(--brand); outline-offset:1px'
+                           if h.screening_id == scr.screening_id }}"
+                 title="{{ h.completed_at }} — {{ h.composite_score }} ({{ h.composite_band }})"></div>
+          {% endfor %}
+        </div>
+        <div class="tiny faint" style="display:flex; justify-content:space-between;
+             margin-top:7px">
+          <span>{{ history[0].completed_at|dt('%d %b') }}</span>
+          <span>{{ history[-1].completed_at|dt('%d %b') }}</span>
+        </div>
+        {% set prev = history[-2] if history|length > 1 else none %}
+        {% if prev and prev.screening_id != scr.screening_id %}
+          {% set delta = (scr.composite_score - prev.composite_score)|round(1) %}
+          <div class="small" style="margin-top:11px">
+            {% if delta > 0 %}
+              <span style="color:var(--high)">▲ {{ delta }}</span> higher than last time
+            {% elif delta < 0 %}
+              <span style="color:var(--low)">▼ {{ -delta }}</span> lower than last time
+            {% else %}Unchanged since last time{% endif %}
+          </div>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="card">
+      <div class="hd"><h3>How to read this</h3></div>
+      <div class="bd small muted">
+        <p>These are <b>screening</b> instruments. A high score means a
+          conversation with a professional is worth having — it is not a
+          diagnosis, and no software can give you one.</p>
+        <p style="margin-bottom:0">Scores move with circumstances. One bad
+          fortnight is not a permanent state.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+{{ sup.support_panel(support, scr.composite_band) }}
+{% endblock %}

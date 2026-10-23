@@ -1,0 +1,104 @@
+{% macro helpline_list(helplines, compact=False) %}
+  {% for key, label in [('Emergency', 'Emergency'), ('National', 'Across India'), ('Delhi NCR', 'Delhi NCR'), ('Noida', 'Noida')] %}
+    {% set group = helplines | selectattr('region', 'equalto', key) | list %}
+    {% if group %}
+      <div class="hl-group">
+        <div class="hl-region">{{ label }}</div>
+        {% for h in group %}
+          <div class="hl-row">
+            <div class="hl-main">
+              <b>{{ h.name }}</b>
+              {% if h.is_crisis %}<span class="badge b-high hl-tag">crisis</span>{% endif %}
+              {% if not compact %}<div class="tiny muted">{{ h.service }}</div>{% endif %}
+            </div>
+            <div class="hl-contact">
+              <a class="hl-phone" href="tel:{{ h.dial }}">{{ h.phone }}</a>
+              <div class="tiny faint">{{ h.hours }}</div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endfor %}
+  <div class="tiny faint hl-note">Numbers checked September 2026. If a line does not connect, call Tele-MANAS on 14416.</div>
+{% endmacro %}
+
+{% macro tip_list(tips, extra=None) %}
+  <div class="tip-list">
+    {% for t in tips %}
+      <div class="tip">
+        <b>{{ t.title }}</b>
+        <span>{{ t.body }}</span>
+      </div>
+    {% endfor %}
+    {% if extra %}
+      <div class="tip">
+        <b>For what you wrote about</b>
+        <span>{{ extra }}</span>
+      </div>
+    {% endif %}
+  </div>
+{% endmacro %}
+
+{% macro helpline_card(helplines) %}
+  <div class="card">
+    <div class="hd"><h3>Need to talk now?</h3></div>
+    <div class="bd small">
+      <p class="muted" style="margin-bottom:10px">Free and confidential. In immediate danger, call 112.</p>
+      {% set shortlist = [] %}
+      {% for h in helplines %}{% if h.is_crisis or h.region == 'Noida' %}{% set _ = shortlist.append(h) %}{% endif %}{% endfor %}
+      {{ helpline_list(shortlist, compact=True) }}
+    </div>
+  </div>
+{% endmacro %}
+
+{% macro support_panel(support, level_name) %}
+  {% set lvl = support.level_code %}
+  {% set tone = ['low', 'medium', 'high'][lvl] %}
+  {% set heading = ['You seem to be doing well', 'Some strain is showing', 'Please look after yourself today'][lvl] %}
+  {% set lead = [
+      'Keep the habits that are working, and check in again now and then.',
+      'These are early warning signs. Small changes now make a real difference.',
+      'What you wrote shows strong distress. You do not have to handle this alone — please reach out using the numbers below.'
+  ][lvl] %}
+
+  {% set coping_card %}
+    <div class="card">
+      <div class="hd"><h3>Coping techniques</h3></div>
+      <div class="bd">{{ tip_list(support.coping) }}</div>
+    </div>
+  {% endset %}
+  {% set advice_card %}
+    <div class="card">
+      <div class="hd"><h3>Advice</h3></div>
+      <div class="bd">{{ tip_list(support.advice, support.theme_advice) }}</div>
+    </div>
+  {% endset %}
+  {% set helpline_block %}
+    <div class="card">
+      <div class="hd"><h3>Helplines — India, Delhi NCR and Noida</h3></div>
+      <div class="bd">{{ helpline_list(support.helplines) }}</div>
+    </div>
+  {% endset %}
+
+  <section class="support support-{{ tone }}">
+    <div class="support-head">
+      <span class="badge b-{{ tone }}">{{ level_name }} stress</span>
+      <div>
+        <h2>{{ heading }}</h2>
+        <p class="muted">{{ lead }}</p>
+      </div>
+    </div>
+
+    {% if lvl == 2 %}
+      {{ helpline_block }}
+      <div class="grid g2">{{ coping_card }}{{ advice_card }}</div>
+    {% elif lvl == 1 %}
+      <div class="grid g2">{{ coping_card }}{{ advice_card }}</div>
+      {{ helpline_block }}
+    {% else %}
+      <div class="grid g2">{{ advice_card }}{{ coping_card }}</div>
+      {{ helpline_block }}
+    {% endif %}
+  </section>
+{% endmacro %}

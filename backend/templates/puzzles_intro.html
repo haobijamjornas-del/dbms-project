@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% import "_icons.html" as ic %}
+{% block title %}Brain puzzles · MindCare{% endblock %}
+{% block heading %}Brain puzzles{% endblock %}
+{% block subheading %}Short puzzles matched to your age · about 6 minutes{% endblock %}
+
+{% block content %}
+{% set group = profile.group %}
+<div class="grid g23">
+  <div>
+    {% if unfinished %}
+      <div class="flash flash-warning">
+        You started a set of puzzles {{ unfinished.started_at|ago }} and did not finish.
+        Pressing the button below will carry on from where you stopped.
+      </div>
+    {% endif %}
+
+    <div class="card puzzle-hero">
+      <div class="bd">
+        <div class="puzzle-hero-top">
+          <div class="puzzle-hero-icon">{{ ic.icon('puzzle', 30) }}</div>
+          <div>
+            <h2>Ready for a short brain break?</h2>
+            <p class="muted">Fifteen quick puzzles that look at reasoning, numbers, attention,
+              patterns and memory. There is no pass or fail, just a snapshot of how your
+              focus is today.</p>
+          </div>
+        </div>
+
+        <div class="level-pill">
+          <span class="level-pill-tag">Your level</span>
+          <div>
+            <b>{{ group.label }}</b>
+            <span class="muted small">
+              {% if profile.matched %}
+                You are {{ profile.age }}, so you will get the set made for ages
+                {{ group.min_age }}–{{ group.max_age }}.
+              {% else %}
+                We do not have your date of birth, so you will get the middle level
+                (ages {{ group.min_age }}–{{ group.max_age }}).
+              {% endif %}
+            </span>
+          </div>
+        </div>
+
+        <form method="post" action="{{ url_for('puzzles.start') }}">
+          <button class="btn btn-primary btn-lg puzzle-start" type="submit">
+            {% if unfinished %}Carry on where I left off{% elif attempts %}Start a new set{% else %}Start the puzzles{% endif %}
+            {{ ic.icon('chevron', 16) }}
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="hd"><h3>What you will solve</h3><div class="spacer"></div>
+        <span class="tiny faint">3 of each kind</span></div>
+      <div class="bd">
+        <div class="kind-grid">
+          {% for c in categories %}
+            <div class="kind">
+              <div class="kind-preview">
+                {% if c.code == 'LOGIC' %}
+                  <span class="kind-logic">Riya &gt; Aman &gt; Dev</span>
+                {% elif c.code == 'NUMBER' %}
+                  <span class="mini-num">2</span><span class="mini-num">4</span><span class="mini-num">8</span><span class="mini-num q">?</span>
+                {% elif c.code == 'STROOP' %}
+                  <span class="kind-stroop">GREEN</span>
+                {% elif c.code == 'PATTERN' %}
+                  <span class="mini-dot" style="background:#3E63DD"></span><span class="mini-dot" style="background:#F17A1A"></span><span class="mini-dot" style="background:#3E63DD"></span><span class="mini-dot q">?</span>
+                {% else %}
+                  <span class="mini-dot" style="background:#2F9E62"></span><b>=</b><span class="mini-num">7</span>
+                {% endif %}
+              </div>
+              <b>{{ c.name }}</b>
+              <span class="tiny muted">{{ c.instructions }}</span>
+              <span class="kind-skill">{{ c.skill }}</span>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="hd"><h3>Your past results</h3></div>
+      <div class="bd tight table-wrap">
+        <table>
+          <thead><tr><th>Date</th><th>Level</th><th class="num">Score</th><th>Result</th><th class="num">Avg. time</th><th></th></tr></thead>
+          <tbody>
+          {% for a in attempts %}
+            <tr>
+              <td class="small" style="white-space:nowrap">{{ a.completed_at|dt('%d %b %Y') }}
+                <div class="tiny faint">{{ a.completed_at|ago }}</div></td>
+              <td class="small">{{ a.age_group }}</td>
+              <td class="num"><b>{{ a.correct_items }}</b><span class="tiny faint">/{{ a.total_items }}</span></td>
+              <td><span class="badge" style="background:{{ a.band_color }}1a; color:{{ a.band_color }}; border-color:{{ a.band_color }}40">{{ a.band }}</span></td>
+              <td class="num small">{{ ((a.avg_response_ms or 0) / 1000)|round(1) }} s</td>
+              <td><a class="btn btn-sm" href="{{ url_for('puzzles.result', attempt_id=a.attempt_id) }}">View</a></td>
+            </tr>
+          {% else %}
+            <tr><td colspan="6" class="empty">You have not tried the puzzles yet. Your results will appear here.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="card">
+      <div class="hd"><h3>How it works</h3></div>
+      <div class="bd">
+        <ol class="steps">
+          <li><b>One puzzle at a time.</b> Each has a timer, and the colour-word ones are meant to be quick.</li>
+          <li><b>Not sure? Skip it.</b> A skipped puzzle simply counts as not answered.</li>
+          <li><b>See what went well.</b> You get your strengths, gentle practice tips and the answers with explanations.</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="hd"><h3>Levels by age</h3></div>
+      <div class="bd tight table-wrap">
+        <table>
+          <thead><tr><th>Level</th><th>Ages</th><th class="num">Puzzles</th></tr></thead>
+          <tbody>
+          {% for g in groups %}
+            <tr class="{{ 'row-mine' if g.age_group_id == group.age_group_id }}">
+              <td><b class="small">{{ g.label }}</b>
+                {% if g.age_group_id == group.age_group_id %}<span class="badge b-blue" style="margin-left:6px">You</span>{% endif %}
+                <div class="tiny faint">{{ g.description }}</div></td>
+              <td class="small" style="white-space:nowrap">{% if g.max_age >= 100 %}{{ g.min_age }}+{% elif g.min_age == 0 %}up to {{ g.max_age }}{% else %}{{ g.min_age }}–{{ g.max_age }}{% endif %}</td>
+              <td class="num small">{{ g.puzzles }}</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card note-card">
+      <div class="bd small">
+        <p><b>A gentle note</b></p>
+        <p class="muted">This is not an IQ test or a diagnosis. Stress, tiredness, hunger and
+          noise all affect focus, so think of your result as a picture of today, not of you.</p>
+        <p class="muted" style="margin:0">Colour puzzles use six colours. If some colours are
+          hard for you to tell apart, just skip those puzzles.</p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

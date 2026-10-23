@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}MindCare{% endblock %}</title>
+<link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<script type="module" src="{{ url_for('static', filename='js/auth.js') }}"></script>
+</head>
+<body>
+{% import "_icons.html" as ic %}
+<main class="auth">
+  <a class="auth-logo" href="{{ url_for('auth.login') }}">
+    {{ ic.logo(30) }}
+    <span><b>MindCare</b><small>Student wellbeing</small></span>
+  </a>
+
+  <div class="auth-card {% block card_class %}{% endblock %}">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}
+        <div class="flash flash-{{ cat }}" role="{{ 'alert' if cat == 'danger' else 'status' }}">{{ msg }}</div>
+      {% endfor %}
+    {% endwith %}
+    {% block form %}{% endblock %}
+  </div>
+
+  <div class="auth-foot">
+    {% block footnote %}{% endblock %}
+    <p class="auth-helpline">Need to talk to someone right now? Call
+      <b>Tele-MANAS 14416</b> — free, any time of day.</p>
+  </div>
+</main>
+</body>
+</html>

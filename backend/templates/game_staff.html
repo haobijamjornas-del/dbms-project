@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% import "_icons.html" as ic %}
+{% import "_town.html" as town %}
+{% block title %}City Rescue · MindCare{% endblock %}
+{% block heading %}City Rescue{% endblock %}
+{% block subheading %}How well students know where to get help{% endblock %}
+
+{% block content %}
+<div class="grid g4 stat-row">
+  <div class="stat accent">
+    <div class="k">Games played</div>
+    <div class="v">{{ headline.games or 0 }}</div>
+    <div class="d">by {{ headline.students or 0 }} students</div>
+  </div>
+  <div class="stat ok">
+    <div class="k">Sent to the right place</div>
+    <div class="v">{{ headline.avg_accuracy or 0 }}%</div>
+    <div class="d">of all emergencies</div>
+  </div>
+  <div class="stat">
+    <div class="k">Average score</div>
+    <div class="v">{{ headline.avg_score or 0 }}</div>
+    <div class="d">out of 120</div>
+  </div>
+  <div class="stat">
+    <div class="k">Average decision time</div>
+    <div class="v">{{ headline.avg_seconds or 0 }} s</div>
+    <div class="d">per emergency</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="hd"><h3>Where emergencies were sent</h3><div class="spacer"></div>
+    <span class="tiny faint">rows are the right place, columns are where students sent them</span></div>
+  <div class="bd tight table-wrap">
+    <table class="confusion">
+      <thead><tr><th>Right place</th>
+        {% for c in columns %}<th class="num">{{ c }}</th>{% endfor %}<th class="num">Right</th></tr></thead>
+      <tbody>
+      {% for row in matrix %}
+        <tr>
+          <td><span class="dot" style="background:{{ row.place.color_hex }}"></span><b class="small">{{ row.place.name }}</b></td>
+          {% for n in row.cells %}
+            {% set is_diag = columns[loop.index0] == row.place.name %}
+            <td class="num cm {{ 'cm-diag' if is_diag else ('cm-miss' if n else '') }}"
+                style="--a:{{ (n / peak)|round(3) if n else 0 }}">{{ n if n else '·' }}</td>
+          {% endfor %}
+          {% set right = row.cells[loop.index0] %}
+          <td class="num small"><b>{{ ((right / row.total * 100)|round|int) if row.total else 0 }}%</b></td>
+        </tr>
+      {% else %}
+        <tr><td colspan="9" class="empty">No games played yet.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="grid g23">
+  <div>
+    <div class="card">
+      <div class="hd"><h3>Recent games</h3></div>
+      <div class="bd tight table-wrap">
+        <table>
+          <thead><tr><th>Student</th><th>Level</th><th class="num">Score</th><th>Stars</th><th class="num">Right</th><th>When</th><th></th></tr></thead>
+          <tbody>
+          {% for gm in games %}
+            <tr>
+              <td><a href="{{ url_for('students.detail', student_id=gm.student_id) }}"><b>{{ gm.student_name }}</b></a>
+                <div class="tiny faint">{{ gm.dept_code }} · Year {{ gm.year_of_study }}</div></td>
+              <td class="small">{{ gm.age_group }}{% if gm.age_at_play %}<div class="tiny faint">age {{ gm.age_at_play }}</div>{% endif %}</td>
+              <td class="num"><b>{{ gm.score }}</b><span class="tiny faint">/{{ gm.max_score }}</span></td>
+              <td>{{ town.stars(gm.stars, 15) }}</td>
+              <td class="num small">{{ gm.correct_rounds }}/{{ gm.rounds }}</td>
+              <td class="small muted" style="white-space:nowrap">{{ gm.completed_at|ago }}</td>
+              <td><a class="btn btn-sm" href="{{ url_for('game.result', game_id=gm.game_id) }}">Open</a></td>
+            </tr>
+          {% else %}
+            <tr><td colspan="7" class="empty">No student has played City Rescue yet.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="card">
+      <div class="hd"><h3>Hardest emergencies</h3></div>
+      <div class="bd">
+        {% for s in hardest %}
+          <div class="hard-row">
+            <span class="round-icon">{{ s.icon }}</span>
+            <div><b class="small">{{ s.title }}</b>
+              <span class="tiny faint">{{ s.age_group }} · right place: {{ s.correct_place }}
+                {% if s.most_common_mistake %}· often sent to {{ s.most_common_mistake }}{% endif %}</span></div>
+            <b class="small">{{ s.pct_correct }}%</b>
+          </div>
+        {% else %}
+          <div class="empty small">Not enough games yet.</div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="hd"><h3>Levels by age</h3></div>
+      <div class="bd tight table-wrap">
+        <table>
+          <thead><tr><th>Level</th><th>Ages</th><th class="num">Emergencies</th><th class="num">Games</th><th class="num">Right</th></tr></thead>
+          <tbody>
+          {% for gr in by_group %}
+            <tr>
+              <td class="small"><b>{{ gr.label }}</b></td>
+              <td class="small" style="white-space:nowrap">{% if gr.max_age >= 100 %}{{ gr.min_age }}+{% else %}{{ gr.min_age }}–{{ gr.max_age }}{% endif %}</td>
+              <td class="num small">{{ gr.scenarios }}</td>
+              <td class="num small">{{ gr.games }}</td>
+              <td class="num small">{{ gr.avg_accuracy ~ '%' if gr.avg_accuracy is not none else '—' }}</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="hd"><h3>Stars given</h3></div>
+      <div class="bd">
+        {% for s in stars %}
+          <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px">
+            {{ town.stars(s.stars, 15) }}<span style="flex:1"></span><b class="small">{{ s.n }}</b>
+          </div>
+        {% else %}
+          <div class="empty small">No games yet.</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

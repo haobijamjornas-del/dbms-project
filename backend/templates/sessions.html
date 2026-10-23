@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+{% block title %}Sessions · MindCare{% endblock %}
+{% block heading %}Counselling sessions{% endblock %}
+{% block subheading %}Book, track and close counselling appointments{% endblock %}
+
+{% block content %}
+<div class="grid g32">
+  <div>
+    <div class="card">
+      <div class="hd"><h3>Book a session</h3></div>
+      <div class="bd">
+        <form method="post">
+          <div class="field">
+            <label for="student_id">Student</label>
+            <select name="student_id" id="student_id" required>
+              <option value="">— select —</option>
+              {% for s in students %}
+                <option value="{{ s.student_id }}">{{ s.full_name }} ({{ s.enrollment_no }})</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="field">
+            <label for="counsellor_id">Counsellor</label>
+            <select name="counsellor_id" id="counsellor_id" required>
+              {% for c in counsellors %}
+                <option value="{{ c.counsellor_id }}"
+                  {{ 'selected' if g.user.counsellor_id == c.counsellor_id }}>{{ c.full_name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="field">
+            <label for="alert_id">Link to alert <span class="faint">(optional)</span></label>
+            <select name="alert_id" id="alert_id">
+              <option value="">— none —</option>
+              {% for a in open_alerts %}
+                <option value="{{ a.alert_id }}">#{{ a.alert_id }} · {{ a.full_name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="field">
+            <label for="scheduled_at">Date and time</label>
+            <input type="datetime-local" name="scheduled_at" id="scheduled_at"
+                   value="{{ default_dt }}" required>
+          </div>
+          <div class="row">
+            <div class="field">
+              <label for="duration_min">Duration</label>
+              <select name="duration_min" id="duration_min">
+                <option value="30">30 min</option>
+                <option value="45" selected>45 min</option>
+                <option value="60">60 min</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="mode">Mode</label>
+              <select name="mode" id="mode">
+                <option>In-Person</option><option>Video</option>
+                <option>Phone</option><option>Chat</option>
+              </select>
+            </div>
+          </div>
+          <div class="field">
+            <label for="notes">Notes</label>
+            <textarea name="notes" id="notes" style="min-height:64px"></textarea>
+          </div>
+          <button class="btn btn-primary" type="submit" style="width:100%">Book session</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="hd"><h3>Counsellor workload</h3><div class="spacer"></div></div>
+      <div class="bd tight table-wrap">
+        <table>
+          <thead><tr><th>Counsellor</th><th class="num">Upcoming</th>
+            <th class="num">Done</th><th class="num">Open alerts</th></tr></thead>
+          <tbody>
+          {% for w in workload %}
+            <tr>
+              <td><b class="small">{{ w.full_name }}</b>
+                  <div class="tiny faint">{{ w.specialization }}</div></td>
+              <td class="num">{{ w.upcoming }}</td>
+              <td class="num">{{ w.completed }}</td>
+              <td class="num">{{ w.open_alerts }}</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="card">
+      <div class="hd">
+        <div class="tabs">
+          {% for st in ['SCHEDULED','COMPLETED','CANCELLED','NO_SHOW','ALL'] %}
+            <a href="{{ url_for('sessions.index', status=st) }}" class="{{ 'active' if status == st }}">
+              {{ 'All' if st == 'ALL' else m.status_label(st) }}
+              {% if counts.get(st) %}<span class="faint">({{ counts.get(st) }})</span>{% endif %}</a>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="bd tight table-wrap">
+        <table>
+          <thead><tr><th>When</th><th>Student</th><th>Counsellor</th>
+            <th>Mode</th><th>Status</th><th>Action</th></tr></thead>
+          <tbody>
+          {% for s in rows %}
+            <tr>
+              <td class="small" style="white-space:nowrap"><b>{{ s.scheduled_at|dt }}</b>
+                <div class="tiny faint">{{ s.duration_min }} min</div></td>
+              <td class="small"><a href="{{ url_for('students.detail', student_id=s.student_id) }}">
+                {{ s.student_name }}</a>
+                <div class="tiny faint">{{ s.dept_code }}</div></td>
+              <td class="small">{{ s.counsellor_name }}</td>
+              <td class="small">{{ s.mode }}</td>
+              <td>{{ m.status_badge(s.status) }}
+                {% if s.follow_up_needed %}
+                  <div class="tiny" style="color:var(--moderate); margin-top:3px">follow-up</div>
+                {% endif %}</td>
+              <td>
+                {% if s.status == 'SCHEDULED' %}
+                <form method="post" action="{{ url_for('sessions.update_status', session_id=s.session_id) }}"
+                      style="display:flex; gap:4px">
+                  <button class="btn btn-sm btn-ok" name="status" value="COMPLETED">Done</button>
+                  <button class="btn btn-sm" name="status" value="NO_SHOW">No-show</button>
+                </form>
+                {% else %}<span class="tiny faint">—</span>{% endif %}
+              </td>
+            </tr>
+          {% else %}
+            <tr><td colspan="6" class="empty">No sessions in this view.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
